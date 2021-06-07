@@ -47,12 +47,12 @@ export const directory = async (req: Request, res: Response) => {
         });
     }
 
-    const directory = await fsPromises.readdir(dir);
+    const filesInDir = await fsPromises.readdir(dir);
 
     const flatten = !!flattenDepth && typeof flattenDepth === 'string' && isNumeric(flattenDepth);
 
     // @ts-ignore
-    const files = flatten ? await mapDirectory(dir, directory, parseInt(flattenDepth)) : await mapDirectory(dir, directory);
+    const files = flatten ? await mapDirectory(dir, filesInDir, parseInt(flattenDepth)) : await mapDirectory(dir, filesInDir);
     // console.log(files)
 
     return res.status(200).json({

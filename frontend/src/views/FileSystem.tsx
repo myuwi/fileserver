@@ -305,7 +305,7 @@ const FileSystem = () => {
 
 
     useEffect(() => {
-        if (!isMobile) fetchFolders();
+        // if (!isMobile) fetchFolders();
         fetchDirectory();
         setSearchQuery('');
         setSelectedFiles([]);

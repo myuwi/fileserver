@@ -2,7 +2,7 @@
     "compilerOptions": {
         "outDir": "./dist",
         "module": "CommonJS",
-        "target": "ESNext",
+        "target": "es2019",
         "moduleResolution": "node",
         "strict": true,
         "types": [

@@ -19,3 +19,8 @@ export type VideoMetadata = {
     videoCodec: string | undefined;
     duration: number | undefined;
 }
+
+export type DbEntry = {
+    id: string;
+    url: string;
+}

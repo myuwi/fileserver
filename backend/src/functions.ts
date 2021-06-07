@@ -3,12 +3,12 @@ import * as path from 'path';
 
 import * as ffmpeg from 'fluent-ffmpeg';
 
-import { File, VideoMetadata } from './types';
+import { DbEntry, File, VideoMetadata } from './types';
 
 import { db } from './db';
 import { __rootdir__ } from './root';
-import { generateId } from './util';
-import { generateImageThumbnail, generateVideoThumbnail, getFileThumbnail } from './thumbs';
+import { getFileThumbnail } from './thumbs';
+import { orderBy } from 'natural-orderby';
 
 export const DIRECTORIES = [
     {
@@ -105,21 +105,20 @@ export const getIdByUrl = async (url: string) => {
 
     if (fromDb && fromDb.id) return fromDb.id;
 
-    const id = generateId(8);
+    const id = await db.generateUniqueId(8);
 
-    await db.set(id, fixedUrl);
+    await db.insert({ id, url: fixedUrl });
 
     return id;
 };
 
 export const getUrlById = async (id: string) => {
-    const file = await db.getById(id);
-    return file.url;
+    return (await db.getById(id))?.url;
 };
 
-export const resolvePath = async (pathId?: string) => {
+export const resolvePath = async (id?: string) => {
     // Return Root in a scuffed way
-    if (!pathId) {
+    if (!id) {
         return {
             dir: 'ROOT',
             breadcrumbs: []
@@ -131,7 +130,7 @@ export const resolvePath = async (pathId?: string) => {
 
     // console.log('pathId', pathId)
 
-    const _path = await getUrlById(pathId);
+    const _path = await getUrlById(id);
 
     if (!_path) throw new Error();
 
@@ -210,24 +209,68 @@ export const mapFolders = async (_path: string): Promise<any[] | null> => {
     return files.filter(Boolean);
 };
 
-export const mapDirectory = async (dirPath: any, filesInDir: any[], flatten?: number): Promise<File[]> => {
-    const files = await filesInDir.reduce(async (outputArr: File[] | Promise<File[]>, fileName: string, i) => {
-        const fileWithInfo = await fileInfo(dirPath, fileName, flatten);
+export const mapDirectory = async (dirPath: string, filesInDir: any[], flatten?: number): Promise<File[]> => {
+    const files = await getDirFiles(dirPath);
 
-        const fileArr = await outputArr;
+    return files;
 
-        try {
-            if (Array.isArray(fileWithInfo)) {
-                return [...fileArr, ...fileWithInfo];
-            } else {
-                return [...fileArr, fileWithInfo];
-            }
-        } catch (err) {
-            console.log(err);
-        }
+    // const files = await filesInDir.reduce(async (outputArr: File[] | Promise<File[]>, fileName: string, i) => {
+    //     const fileWithInfo = await fileInfo(dirPath, fileName, flatten);
 
-        return [];
-    }, []);
+    //     const fileArr = await outputArr;
+
+    //     try {
+    //         if (Array.isArray(fileWithInfo)) {
+    //             return [...fileArr, ...fileWithInfo];
+    //         } else {
+    //             return [...fileArr, fileWithInfo];
+    //         }
+    //     } catch (err) {
+    //         console.log(err);
+    //     }
+
+    //     return [];
+    // }, []);
+
+    // return files;
+};
+
+export const getDirFiles = async (dir: string) => {
+    const filePaths = (await fsPromises.readdir(dir))
+        .map((f) =>
+            path.join(dir, f)
+                .replace(/\\/g, '/')
+        );
+
+
+    // console.log('filePaths');
+    // console.log(filePaths);
+
+    const oldEntries = await db.getMultipleByUrl(filePaths);
+
+    // console.log('oldEntries');
+    // console.log(oldEntries);
+
+    const filteredEntries = filePaths
+        .filter((fp) =>
+            !oldEntries.some((e) => e.url === fp)
+        );
+
+    const newEntries = await db.generateIds(filteredEntries, 8);
+
+    // console.log('newEntries');
+    // console.log(newEntries);
+
+    if (newEntries.length) {
+        await db.insertMany(newEntries);
+    }
+
+    const items = orderBy(
+        [...oldEntries, ...newEntries],
+        [(v: DbEntry) => v.url]
+    );
+
+    const files = await Promise.all(items.map(async (e) => await fileInfo(e.url)));
 
     return files;
 };
@@ -284,11 +327,11 @@ export const fileInfo = async (dirPath: string, fileName?: string, flatten = 0) 
     if (isDirectory) {
         const filesInDirectory = await fsPromises.readdir(filePath);
 
-        if (flatten > 0) {
-            // console.log('x')
-            // files.flat()
-            return await mapDirectory(filePath, filesInDirectory, flatten - 1);
-        }
+        // if (flatten > 0) {
+        //     // console.log('x')
+        //     // files.flat()
+        //     return await mapDirectory(filePath, filesInDirectory, flatten - 1);
+        // }
 
         item.fileCount = filesInDirectory.length;
     }

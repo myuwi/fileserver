@@ -1,4 +1,6 @@
 import Knex from 'knex';
+import { DbEntry } from './types';
+import { generateId } from './util';
 
 const knex = Knex({
     client: 'sqlite3',
@@ -35,29 +37,104 @@ export const dropSchema = () =>
         });
 
 
-// FIXME: Handle folders that have tons and tons of files
+
+
+// TODO: Make everything link with IDs instead of paths
 export const db = {
-    set: async (id: string, url: string) => {
-        await knex('files')
-            .select()
-            .where({ id })
-            .then(async (rows: any) => {
-                if (rows.length === 0) {
-                    // no matching records found
-                    await knex('files').insert({ id, url });
-                } else {
-                    // return or throw - duplicate name found
-                }
-            })
-            .catch((err: any) => {
-                console.log(err);
-                // you can find errors here.
-            });
+    getMultipleByUrl: async (pathArr: string[]): Promise<DbEntry[]> => {
+        return await knex<DbEntry>('files')
+            .select('*')
+            .whereIn('url', pathArr);
+    },
+    getMultipleById: async (idArr: string[]): Promise<DbEntry[]> => {
+        return await knex<DbEntry>('files')
+            .select('*')
+            .whereIn('id', idArr);
     },
     getById: async (id: string) => {
-        return await knex('files').where('id', id).first();
+        return await knex<DbEntry>('files').where('id', id).first();
     },
     getByUrl: async (url: string) => {
-        return await knex('files').where('url', url).first();
+        return await knex<DbEntry>('files').where('url', url).first();
+    },
+    insert: async (entry: DbEntry) => {
+        try {
+            const { id } = entry;
+            const rows = await knex('files')
+                .select()
+                .where({ id });
+
+            if (rows.length) {
+                throw new Error('Insert failed - Duplicate ID found');
+            }
+
+            return await knex('files').insert(entry);
+        } catch (err) {
+            console.log(err);
+        }
+    },
+    insertMany: async (data: DbEntry[]) => {
+        try {
+            let items = data;
+            let i = 0;
+
+            while (items.length) {
+                const slice = items.slice(0, 100);
+
+                await knex('files')
+                    .insert(slice);
+
+                i += slice.length;
+                items = items.slice(slice.length);
+
+                console.log(` * Inserted ${slice.length} items into the database`);
+            }
+
+        } catch (err) {
+            console.log(err);
+        }
+    },
+    generateUniqueId: async (length: number): Promise<string> => {
+        const id = generateId(length);
+
+        const rows = await knex('files')
+            .where({ id });
+
+        if (!rows.length) {
+            return id;
+        }
+
+        return db.generateUniqueId(length);
+    },
+    // Very scuffed, might fix later
+    generateIds: async (items: string[], idLength: number) => {
+        const ids = Array(items.length)
+            .fill(0)
+            .map(() => generateId(idLength));
+
+
+        let alreadyExists: string[] = [];
+
+        do {
+            if (alreadyExists.length) {
+                for (let i = 0; i < ids.length; i++) {
+                    const id = ids[i];
+                    if (alreadyExists?.includes(id)) {
+                        ids[i] = generateId(idLength);
+                    }
+                }
+            }
+
+            alreadyExists =
+                (await db.getMultipleById(ids))
+                    .map(({ id }) => id);
+        } while (alreadyExists.length);
+
+        const newItems = items.map((u, i): DbEntry => ({
+            id: ids[i],
+            url: u
+        }));
+
+        return newItems;
     }
 };
