@@ -109,7 +109,7 @@ const FSItem = React.forwardRef((props: Props, ref: React.ForwardedRef<HTMLDivEl
             // thumbRef.current.style.backgroundImage = 'url("' + img.src + '")'
             setThumbSrc(img.src);
         };
-        img.src = `http://192.168.1.106:3000/api/thumb/${item.id}.png`;
+        img.src = `http://192.168.1.106:3000/api/thumb/${item.id}.jpg`;
 
         return () => {
             img = null;

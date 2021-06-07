@@ -9,9 +9,9 @@ const knex = Knex({
 
 export const createSchema = () =>
     knex.schema
-        .createTable('files', (table: any) => {
-            table.string('id').notNullable();
-            table.string('url').notNullable();
+        .createTable('files', (t: any) => {
+            t.string('id').notNullable().unique();
+            t.string('url').notNullable().unique();
         })
         .then(() => {
             console.log(' * Schema created.');
@@ -34,6 +34,8 @@ export const dropSchema = () =>
             console.log(err);
         });
 
+
+// FIXME: Handle folders that have tons and tons of files
 export const db = {
     set: async (id: string, url: string) => {
         await knex('files')

@@ -1,8 +1,9 @@
 export type Dimensions = {
-    width: number | undefined
-    height: number | undefined
+    width: number;
+    height: number;
 }
 
+// TODO: Split into two types
 export type File = {
     name: string;
     id: string;

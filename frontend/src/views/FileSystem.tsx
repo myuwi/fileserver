@@ -2,11 +2,11 @@ import * as React from 'react';
 import { useEffect, useState, useRef } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 
-import { FsFile, ViewerMedia } from '../types';
-
 import Axios from 'axios';
 
-import { mdiClose, mdiChevronRight, mdiViewList, mdiViewGrid, mdiEye, mdiEyeOff, mdiChevronLeft, mdiFolder, mdiArrowUp, mdiRefresh } from '@mdi/js';
+import { FsFile, ViewerMedia } from '../types';
+
+import { mdiClose, mdiChevronRight, mdiChevronLeft, mdiFolder, mdiArrowUp, mdiRefresh } from '@mdi/js';
 
 import classNames from 'classnames';
 import { useCustomHistory } from '../hooks/useCustomHistory';
@@ -40,19 +40,20 @@ const useListMode = createPersistedState('listMode');
 // TODO: Change document title based on Media
 
 type ParamTypes = {
-    id: string
+    id: string;
 }
 
 type LocationStateTypes = {
-    mediaOpen: boolean
+    mediaOpen: boolean;
 }
 
 const FileSystem = () => {
     const isMobile = useMobile();
 
+    // TODO: Convert to a hook
     const [folders, setFolders] = useState(null);
     const [directoryFiles, setDirectoryFiles] = useState<FsFile[]>([]);
-
+    const [fetching, setFetching] = useState<boolean>(false);
     const [filteredDirectoryFiles, setFilteredDirectoryFiles] = useState<FsFile[]>([]);
 
     const firstRender = useRef(true);
@@ -82,6 +83,8 @@ const FileSystem = () => {
     const directoryId = params.id;
 
     const location = useLocation<LocationStateTypes>();
+
+    const collator = new Intl.Collator('fi', { numeric: true, sensitivity: 'base' });
 
     useEffect(() => {
         if (viewerMedia && (!location.state || !location.state.mediaOpen)) {
@@ -117,8 +120,6 @@ const FileSystem = () => {
 
     const { canGoBack, canGoForward } = useCustomHistory();
 
-    const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
-
     const setDirectoryId = (id: string) => {
         // console.log(id)
         if (!id) {
@@ -136,6 +137,7 @@ const FileSystem = () => {
     };
 
     const fetchDirectory = async () => {
+        setFetching(true);
         setDirectoryFiles([]);
         let url = '/api/fs';
 
@@ -155,13 +157,18 @@ const FileSystem = () => {
 
             LOGGER.debug(dir);
 
+            const files = filterFiles(dir.files);
+
             setBreadcrumbs(dir.breadcrumbs);
             setDirectoryFiles(dir.files);
+            setFilteredDirectoryFiles(files);
+            setFetching(false);
         } catch (err) {
             // if (err.response.status === 404) return setDirectoryId(null)
 
             // TODO: Make proper error messages
             setDirectoryFiles([]);
+            setFetching(false);
             console.log(err.response);
         }
     };
@@ -194,15 +201,28 @@ const FileSystem = () => {
         setFlattenDepth(flattenDepth > 0 ? 0 : 1);
     };
 
-    const handleViewModeChange = () => {
-        setListEnabled(!listEnabled);
-    };
+    const filterFiles = (files: FsFile[]) => {
+        const filteredFiles = files
+            .filter((s: any) => {
+                if (!searchQuery || searchQuery === '') return true;
 
-    useEffect(() => {
-        if (!directoryFiles) return setFilteredDirectoryFiles([]);
+                const words = searchQuery.toLowerCase().split(' ');
 
-        const filteredFiles = directoryFiles
-            .filter((e: any) => !searchQuery || searchQuery === '' || e.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                let search = s.name.toLowerCase();
+
+                for (let i = 0; i < words.length; i++) {
+                    const word = words[i];
+                    
+                    if (search.includes(word)) {
+                        search = search.replace(word, '');
+                        continue;
+                    } else {
+                        return false;
+                    }
+                }
+
+                return true;
+            })
             .sort((a: any, b: any) => {
                 if (a.isDirectory && !b.isDirectory) {
                     return -1;
@@ -212,8 +232,6 @@ const FileSystem = () => {
                 }
 
                 return collator.compare(a.name, b.name);
-
-                // return a.name.localeCompare(b.name)
             });
 
         setFileRefs(
@@ -224,8 +242,16 @@ const FileSystem = () => {
 
         LOGGER.debug(filteredFiles);
 
-        setFilteredDirectoryFiles(filteredFiles);
-    }, [directoryFiles, searchQuery]);
+        return filteredFiles;
+    };
+
+    useEffect(() => {
+        if (!directoryFiles) return setFilteredDirectoryFiles([]);
+
+        const files = filterFiles(directoryFiles);
+
+        setFilteredDirectoryFiles(files);
+    }, [searchQuery]);
 
 
     const handleIndexChange = (indexChange: any) => {
@@ -363,6 +389,7 @@ const FileSystem = () => {
                 <FSItemList
                     files={filteredDirectoryFiles}
                     fileRefs={fileRefs}
+                    fetching={fetching}
                     selectedFiles={selectedFiles}
                     setSelectedFiles={setSelectedFiles}
                     setDirectoryId={setDirectoryId}

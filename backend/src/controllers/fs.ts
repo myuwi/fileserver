@@ -88,7 +88,7 @@ export const file = async (req: Request, res: Response) => {
     const fileId = req.params.id;
 
 
-    const acceptEncoding = req.headers['accept-encoding'];
+    // const acceptEncoding = req.headers['accept-encoding'];
     // console.log(acceptEncoding)
 
     // console.log(req.headers)

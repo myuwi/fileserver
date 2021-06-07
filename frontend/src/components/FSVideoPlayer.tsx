@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Icon } from './Icon';
-import { mdiPause, mdiPlay, mdiFullscreen, mdiFullscreenExit, mdiFastForward10, mdiRewind10, mdiArrowLeft, mdiDotsVertical, mdiLinkVariant } from '@mdi/js';
+import { mdiPause, mdiPlay, mdiFullscreen, mdiFullscreenExit, mdiFastForward10, mdiRewind10, mdiArrowLeft, mdiDotsVertical, mdiLinkVariant, mdiDownload } from '@mdi/js';
 
 import { useDrag } from '../hooks/useDrag';
 
@@ -303,6 +303,10 @@ const FSVideoPlayer = ({ media, onError, onImmersedChange, mouseMoving, toggleFu
         navigator.clipboard.writeText(src);
     };
 
+    const download = () => {
+        window.open(src + '/download');
+    };
+
     const copyToClipboard = (str: string) => {
         const elem = document.createElement('textarea');
         elem.value = str;
@@ -491,6 +495,7 @@ const FSVideoPlayer = ({ media, onError, onImmersedChange, mouseMoving, toggleFu
                         <span className="title">{media.name}</span>
 
                         <div className="buttons">
+                            <IconButton icon={mdiDownload} onClick={download} />
                             <IconButton icon={mdiLinkVariant} onClick={() => copyToClipboard(src)} />
                             <IconButton icon={mdiDotsVertical} />
                         </div>

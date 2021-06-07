@@ -7,9 +7,11 @@ import { __rootdir__ } from './root';
 import { Dimensions } from './types';
 
 /**
- * Thumbnail image max size on an axissize.
+ * Thumbnail image max size on an axis.
  */
-export const THUMB_SIZE = 160;
+export const THUMB_SIZE = 128;
+
+export const THUMB_EXTENSION = '.jpg';
 
 /**
  * The directory where image and video thumbnails are stored.
@@ -17,32 +19,28 @@ export const THUMB_SIZE = 160;
 export const THUMB_DIR = path.join(__rootdir__, '..', 'thumbs');
 
 
-
-const getDimentions = (filePath: string): Promise<Dimensions> => {
+/**
+ * Returns the dimensions of a video file.
+ */
+const getDimentions = (filePath: string) => {
     // console.log('Getting Dimentions from:', filePath)
-    return new Promise((resolve, reject) => {
+    return new Promise<Dimensions>((resolve, reject) => {
         ffmpeg.ffprobe(filePath, (err, metadata) => {
             if (err) {
                 // console.log('Error occured while getting dimensions of:', filePath)
                 return reject(err);
             }
 
-            let size;
+            const stream = metadata.streams.find((stream) =>
+                stream.codec_type === 'video' && typeof stream.width === 'number' && typeof stream.height === 'number'
+            );
 
-            for (let i = 0; i < metadata.streams.length; i++) {
-                if (metadata.streams[i].codec_type === 'video') {
-                    size = {
-                        width: metadata.streams[i].width,
-                        height: metadata.streams[i].height
-                    };
-                    break;
-                }
-            }
+            if (!stream || !stream.height || !stream.width) return reject('Couldn\'t find video dimensions');
 
-            if (!size) return reject('Couldn\'t find video dimensions');
-            // console.log(metadata)
-
-            return resolve(size);
+            return resolve({
+                height: stream.height,
+                width: stream.width
+            });
         });
     });
 };
@@ -51,12 +49,10 @@ const getDimentions = (filePath: string): Promise<Dimensions> => {
 
 export const getFileThumbnail = async (id: string) => {
     if (!id) return false;
-    const thumbName = `${id}.png`;
-    const thumbNameNoExt = `${id}`;
+    const thumbName = `${id}${THUMB_EXTENSION}`;
 
     try {
         await fsPromises.access(path.join(THUMB_DIR, thumbName));
-        // await fsPromises.access(path.join(thumbsFolder, thumbNameNoExt));
         return true;
     } catch (err) {
         return false;
@@ -68,13 +64,11 @@ export const getFileThumbnail = async (id: string) => {
 export const generateVideoThumbnail = async (filePath: string, fileId: string) => {
     if (!filePath || !fileId) return false;
 
-    const thumbName = `${fileId}.png`;
-    const thumbNameNoExt = `${fileId}`;
+    const thumbName = `${fileId}${THUMB_EXTENSION}`;
 
     try {
         const { width, height } = await getDimentions(filePath);
 
-        if (!width || !height) throw new Error();
         console.log(`Generating thumbnail: ${thumbName}`);
 
         const size = width > height ? `${THUMB_SIZE}x?` : `?x${THUMB_SIZE}`;
@@ -95,13 +89,11 @@ export const generateVideoThumbnail = async (filePath: string, fileId: string) =
                 });
         });
 
-        // await fsPromises.rename(path.join(thumbsFolder, thumbName), path.join(thumbsFolder, thumbNameNoExt));
 
         console.log(`Thumbnail generated: ${thumbName}`);
         return true;
     } catch (err) {
-        // console.log(err)
-        // console.log('failed to generate thumbnail for ' + filePath)
+        console.log('failed to generate thumbnail for ' + filePath);
         return false;
     }
 };
@@ -111,8 +103,7 @@ export const generateVideoThumbnail = async (filePath: string, fileId: string) =
 export const generateImageThumbnail = async (filePath: string, fileId: string) => {
     if (!filePath || !fileId) return false;
 
-    const thumbName = `${fileId}.png`;
-    const thumbNameNoExt = `${fileId}`;
+    const thumbName = `${fileId}${THUMB_EXTENSION}`;
 
     try {
         console.log(`Generating thumbnail: ${thumbName}`);
@@ -129,7 +120,7 @@ export const generateImageThumbnail = async (filePath: string, fileId: string) =
         return true;
     } catch (err) {
         // console.log(err)
-        // console.log('failed to generate thumbnail for ' + filePath)
+        console.log('failed to generate thumbnail for ' + filePath);
         return false;
     }
 };

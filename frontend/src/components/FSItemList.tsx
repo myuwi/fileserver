@@ -11,7 +11,8 @@ import { FsFile } from '../types';
 
 type Props = {
     files: FsFile[];
-    fileRefs: any;
+    fileRefs: React.RefObject<HTMLDivElement>[];
+    fetching: boolean;
     setSelectedFiles: React.Dispatch<React.SetStateAction<string[]>>;
     selectedFiles: string[];
     setFocusedListItem: any;
@@ -22,7 +23,8 @@ type Props = {
 const useUiSize = createPersistedState('uiSize');
 const useListMode = createPersistedState('listMode');
 
-const FSItemList = ({ files, fileRefs, selectedFiles, setSelectedFiles, setDirectoryId, setViewerMedia, setFocusedListItem }: Props) => {
+// TODO: Only render visible items
+const FSItemList = ({ files, fileRefs, fetching, selectedFiles, setSelectedFiles, setDirectoryId, setViewerMedia, setFocusedListItem }: Props) => {
 
     const itemlistWrapperRef = useRef<HTMLDivElement>(null);
     const itemlistRef = useRef<HTMLDivElement>(null);
@@ -150,8 +152,6 @@ const FSItemList = ({ files, fileRefs, selectedFiles, setSelectedFiles, setDirec
         grid: !listEnabled
     });
 
-    const loading = files === null;
-
     return (
         <div className="fs-itemlist-wrapper"
             onMouseDown={(e) => clearSelected(e)}
@@ -161,7 +161,7 @@ const FSItemList = ({ files, fileRefs, selectedFiles, setSelectedFiles, setDirec
                 <FSMobileSort list={listEnabled} setList={setListEnabled} />
             )} */}
 
-            {loading ? (
+            {fetching ? (
                 <Spinner />
             ) : (
                 files.length ? (

@@ -19,8 +19,6 @@ app.use(WebpackHotMiddleware(compiler, {
     log: false
 }));
 
-// app.use('/static/img', express.static('public/img'))
-
 app.use('/api', createProxyMiddleware({ target: 'http://192.168.1.106:3000', changeOrigin: true }));
 
 app.use(express.static('dist'));

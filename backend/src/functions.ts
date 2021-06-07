@@ -270,11 +270,11 @@ export const fileInfo = async (dirPath: string, fileName?: string, flatten = 0) 
 
             // TODO: Queue for thumbnail creation to not destroy server performance
             // Generate thumbnail
-            if (!item.hasThumb && isVideoFile(filePath)) {
-                item.hasThumb = await generateVideoThumbnail(filePath, id);
-            } else if (isImageFile(filePath)) {
-                item.hasThumb = await generateImageThumbnail(filePath, id);
-            }
+            // if (!item.hasThumb && isVideoFile(filePath)) {
+            //     item.hasThumb = await generateVideoThumbnail(filePath, id);
+            // } else if (isImageFile(filePath)) {
+            //     item.hasThumb = await generateImageThumbnail(filePath, id);
+            // }
 
         } catch (err) {
             // console.log(err)
