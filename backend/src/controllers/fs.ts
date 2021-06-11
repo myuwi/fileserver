@@ -116,14 +116,14 @@ export const file = async (req: Request, res: Response) => {
                 const start = parseInt(parts[0], 10);
                 const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 
-                const chunksize = (end - start) + 1;
+                const contentLength = (end - start) + 1;
 
                 const stream = fs.createReadStream(filePath, { start, end });
 
                 const head = {
                     'Content-Range': `bytes ${start}-${end}/${fileSize}`,
                     'Accept-Ranges': 'bytes',
-                    'Content-Length': chunksize,
+                    'Content-Length': contentLength,
                     'Content-Type': 'video/mp4',
                 };
 

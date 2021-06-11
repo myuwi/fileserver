@@ -7,7 +7,7 @@ import { DbEntry, File, VideoMetadata } from './types';
 
 import { db } from './db';
 import { __rootdir__ } from './root';
-import { getFileThumbnail } from './thumbs';
+import { generateImageThumbnail, generateVideoThumbnail, getFileThumbnail } from './thumbs';
 import { orderBy } from 'natural-orderby';
 
 export const DIRECTORIES = [
@@ -29,7 +29,7 @@ const EXTENSIONS: {
     [s: string]: string[];
 } = {
     AUDIO: ['mp3', 'wav'],
-    VIDEO: ['avi', 'mkv', 'mp4', 'm4v', 'webm'],
+    VIDEO: ['avi', 'mkv', 'mp4', 'm4v', 'ts', 'webm'], // TS is also a video file format
     IMAGE: ['gif', 'jpg', 'jpeg', 'png']
 };
 
@@ -313,11 +313,11 @@ export const fileInfo = async (dirPath: string, fileName?: string, flatten = 0) 
 
             // TODO: Queue for thumbnail creation to not destroy server performance
             // Generate thumbnail
-            // if (!item.hasThumb && isVideoFile(filePath)) {
-            //     item.hasThumb = await generateVideoThumbnail(filePath, id);
-            // } else if (isImageFile(filePath)) {
-            //     item.hasThumb = await generateImageThumbnail(filePath, id);
-            // }
+            if (!item.hasThumb && isVideoFile(filePath)) {
+                item.hasThumb = await generateVideoThumbnail(filePath, id);
+            } else if (isImageFile(filePath)) {
+                item.hasThumb = await generateImageThumbnail(filePath, id);
+            }
 
         } catch (err) {
             // console.log(err)

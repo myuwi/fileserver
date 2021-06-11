@@ -93,6 +93,7 @@ export const generateVideoThumbnail = async (filePath: string, fileId: string) =
         console.log(`Thumbnail generated: ${thumbName}`);
         return true;
     } catch (err) {
+        console.log(err);
         console.log('failed to generate thumbnail for ' + filePath);
         return false;
     }

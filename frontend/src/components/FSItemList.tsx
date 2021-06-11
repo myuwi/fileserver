@@ -24,6 +24,7 @@ const useUiSize = createPersistedState('uiSize');
 const useListMode = createPersistedState('listMode');
 
 // TODO: Only render visible items
+// TODO: Only generate visible thumbnails
 const FSItemList = ({ files, fileRefs, fetching, selectedFiles, setSelectedFiles, setDirectoryId, setViewerMedia, setFocusedListItem }: Props) => {
 
     const itemlistWrapperRef = useRef<HTMLDivElement>(null);

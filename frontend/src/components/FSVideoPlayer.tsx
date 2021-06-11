@@ -10,6 +10,7 @@ import { Spinner } from './Spinner';
 import classNames from 'classnames';
 import { IconButton } from './IconButton';
 import { LOGGER } from '../LOGGER';
+import { copyToClipboard } from '../Utils';
 
 type Props = {
     media: any;
@@ -295,26 +296,10 @@ const FSVideoPlayer = ({ media, onError, onImmersedChange, mouseMoving, toggleFu
         }
     };
 
-    const openInNew = () => {
-        window.open(src.replace('http', 'vlc'), '_blank');
-    };
-
-    const copyLink = () => {
-        navigator.clipboard.writeText(src);
-    };
-
     const download = () => {
         window.open(src + '/download');
     };
 
-    const copyToClipboard = (str: string) => {
-        const elem = document.createElement('textarea');
-        elem.value = str;
-        document.body.appendChild(elem);
-        elem.select();
-        document.execCommand('copy');
-        document.body.removeChild(elem);
-     };
 
     const clearTimeouts = () => {
 

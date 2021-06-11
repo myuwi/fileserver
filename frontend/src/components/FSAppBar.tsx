@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 
-import { mdiArrowLeft, mdiMenu, mdiClose, mdiMagnify, mdiDotsVertical } from '@mdi/js';
+import { mdiArrowLeft, mdiMenu, mdiClose, mdiMagnify, mdiDotsVertical, mdiLinkVariant, mdiDownload } from '@mdi/js';
 
 import { Icon } from './Icon';
 import { AppBar } from './AppBar';
+import { copyToClipboard } from '../Utils';
 
 type Props = {
     breadcrumbs: any;
@@ -56,6 +57,8 @@ const FSAppBar = ({ breadcrumbs, toggleSettings, backDirectory, searchQuery, set
         setSearchQuery(e.target.value);
     };
 
+
+
     if (selectedFiles && selectedFiles.length > 0) {
         return (
             <AppBar>
@@ -64,6 +67,22 @@ const FSAppBar = ({ breadcrumbs, toggleSettings, backDirectory, searchQuery, set
                 </AppBar.IconButton>
 
                 <AppBar.Title>{`${selectedFiles.length} item${selectedFiles.length > 1 ? 's' : ''}`}</AppBar.Title>
+
+                {selectedFiles.length === 1 && (
+                    <>
+                        <AppBar.IconButton style={{ marginLeft: 'auto', marginRight: 16 }} onClick={() => {
+                            window.open('http://192.168.1.106:3000/api/fs/file/' + selectedFiles[0] + '/download');
+                        }}>
+                            <Icon icon={mdiDownload} />
+                        </AppBar.IconButton>
+
+                        <AppBar.IconButton onClick={() =>
+                            copyToClipboard('http://192.168.1.106:3000/api/fs/file/' + selectedFiles[0])
+                        }>
+                            <Icon icon={mdiLinkVariant} />
+                        </AppBar.IconButton>
+                    </>
+                )}
             </AppBar>
         );
     }

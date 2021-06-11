@@ -1,10 +1,12 @@
+import { DetailedHTMLProps, ButtonHTMLAttributes } from 'react';
+
 type Props = {
     children: React.ReactNode;
     background?: string;
 }
 
 
-const AppBar = ({ children, background, ...rest }: Props) => {
+const AppBar = ({ children, ...rest }: Props) => {
 
     return (
         <div className="AppBar" {...rest}>
@@ -13,17 +15,20 @@ const AppBar = ({ children, background, ...rest }: Props) => {
     );
 };
 
-type ButtonProps = {
-    children: React.ReactNode;
-    onClick?: (e: React.MouseEvent) => void;
-    className?: string;
-}
 
-const AppBarIconButton = ({ children, onClick, className }: ButtonProps) => {
+type ButtonProps = DetailedHTMLProps<
+    ButtonHTMLAttributes<HTMLButtonElement>,
+    HTMLButtonElement
+>
+
+const AppBarIconButton = ({ children, className, ...props }: ButtonProps) => {
     const classes = className ? `AppBarIconButton ${className}` : 'AppBarIconButton';
 
     return (
-        <button className={classes} onClick={onClick}>{children}</button>
+        <button
+            className={classes}
+            {...props}
+        >{children}</button>
     );
 };
 
