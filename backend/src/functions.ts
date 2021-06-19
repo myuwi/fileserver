@@ -5,7 +5,7 @@ import * as ffmpeg from 'fluent-ffmpeg';
 
 import { DbEntry, File, VideoMetadata } from './types';
 
-import { db } from './db';
+import { db, knex } from './db';
 import { __rootdir__ } from './root';
 import { generateImageThumbnail, generateVideoThumbnail, getFileThumbnail } from './thumbs';
 import { orderBy } from 'natural-orderby';
@@ -235,7 +235,39 @@ export const mapDirectory = async (dirPath: string, filesInDir: any[], flatten?:
     // return files;
 };
 
-export const getDirFiles = async (dir: string) => {
+export const getDirFiles = async (dir: string, forceUpdate: boolean = false) => {
+    forceUpdate = true; // for now
+    const parent = await knex<DbEntry>('files')
+        .select('*')
+        .where('url', dir)
+        .first();
+
+    if (!parent) return [];
+
+    if (!forceUpdate) {
+        try {
+            // const dbEntries = await knex<DbEntry>('files AS parent')
+            //     .select('parent.*')
+            //     .where('parent.url', dir)
+            //     .first()
+            //     .join('files', 'parent.id', '=', 'files.parent');
+
+            const dbEntries: DbEntry[] = await knex<DbEntry>('files')
+                .select('*')
+                .where('parent', parent.id);
+
+            if (dbEntries.length) {
+                console.log(dbEntries);
+                const files = await Promise.all(dbEntries.map(async (e) => await fileInfo(e.url)));
+                return files;
+            }
+
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+
     const filePaths = (await fsPromises.readdir(dir))
         .map((f) =>
             path.join(dir, f)
@@ -251,12 +283,16 @@ export const getDirFiles = async (dir: string) => {
     // console.log('oldEntries');
     // console.log(oldEntries);
 
-    const filteredEntries = filePaths
+    const filesNotInDb = filePaths
         .filter((fp) =>
             !oldEntries.some((e) => e.url === fp)
         );
 
-    const newEntries = await db.generateIds(filteredEntries, 8);
+    const newEntries = (await db.generateIds(filesNotInDb, 8))
+        .map((e) => {
+            e.parent = parent.id;
+            return e;
+        });
 
     // console.log('newEntries');
     // console.log(newEntries);

@@ -58,7 +58,6 @@ const FSAppBar = ({ breadcrumbs, toggleSettings, backDirectory, searchQuery, set
     };
 
 
-
     if (selectedFiles && selectedFiles.length > 0) {
         return (
             <AppBar>
@@ -71,13 +70,13 @@ const FSAppBar = ({ breadcrumbs, toggleSettings, backDirectory, searchQuery, set
                 {selectedFiles.length === 1 && (
                     <>
                         <AppBar.IconButton style={{ marginLeft: 'auto', marginRight: 16 }} onClick={() => {
-                            window.open('http://192.168.1.106:3000/api/fs/file/' + selectedFiles[0] + '/download');
+                            window.open('http://192.168.1.106:3000/api/file/' + selectedFiles[0] + '/download');
                         }}>
                             <Icon icon={mdiDownload} />
                         </AppBar.IconButton>
 
                         <AppBar.IconButton onClick={() =>
-                            copyToClipboard('http://192.168.1.106:3000/api/fs/file/' + selectedFiles[0])
+                            copyToClipboard('http://192.168.1.106:3000/api/file/' + selectedFiles[0])
                         }>
                             <Icon icon={mdiLinkVariant} />
                         </AppBar.IconButton>

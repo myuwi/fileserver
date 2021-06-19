@@ -1,6 +1,6 @@
 import { IconButton } from './IconButton';
 
-import { mdiViewList, mdiViewModule } from '@mdi/js';
+import { mdiImage, mdiViewList } from '@mdi/js';
 
 type Props = {
     list: boolean;
@@ -10,7 +10,8 @@ type Props = {
 const FSBottomBar = ({ list, setList }: Props) => {
     return (
         <div className="fs-bottom-bar">
-            <IconButton icon={!list ? mdiViewModule : mdiViewList} onClick={() => setList(!list)} />
+            <IconButton icon={mdiViewList} onClick={() => setList(!list)} />
+            <IconButton icon={mdiImage} onClick={() => setList(!list)} />
         </div>
     );
 };

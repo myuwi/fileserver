@@ -130,7 +130,7 @@ const FileSystem = () => {
     };
 
     const fetchFolders = async () => {
-        const folders = await Axios.get('/api/fs/folders').then((res) => res.data);
+        const folders = await Axios.get('/api/folders').then((res) => res.data);
         LOGGER.debug(folders);
 
         setFolders(folders.sort((a: any, b: any) => collator.compare(a.name, b.name)));
@@ -139,14 +139,13 @@ const FileSystem = () => {
     const fetchDirectory = async () => {
         setFetching(true);
         setDirectoryFiles([]);
-        let url = '/api/fs';
+        let url = '/api/dir';
 
         const paramsArr = [];
 
         // console.log(directoryId)
 
-        // if (directoryId) url += `?d=${directoryId}`
-        if (directoryId) paramsArr.push(`dir=${directoryId}`);
+        if (directoryId) url += `/${directoryId}`;
         if (flattenDepth > 0) paramsArr.push(`flatten=${flattenDepth}`);
 
         if (paramsArr.length > 0) url += `?${paramsArr.join('&')}`;
@@ -203,16 +202,16 @@ const FileSystem = () => {
 
     const filterFiles = (files: FsFile[]) => {
         const filteredFiles = files
-            .filter((s: any) => {
+            .filter((file: FsFile) => {
                 if (!searchQuery || searchQuery === '') return true;
 
                 const words = searchQuery.toLowerCase().split(' ');
 
-                let search = s.name.toLowerCase();
+                let search = file.name.toLowerCase();
 
                 for (let i = 0; i < words.length; i++) {
                     const word = words[i];
-                    
+
                     if (search.includes(word)) {
                         search = search.replace(word, '');
                         continue;
@@ -223,7 +222,7 @@ const FileSystem = () => {
 
                 return true;
             })
-            .sort((a: any, b: any) => {
+            .sort((a: FsFile, b: FsFile) => {
                 if (a.isDirectory && !b.isDirectory) {
                     return -1;
                 }
@@ -254,7 +253,7 @@ const FileSystem = () => {
     }, [searchQuery]);
 
 
-    const handleIndexChange = (indexChange: any) => {
+    const handleIndexChange = (indexChange: number) => {
         let newIndex = focusedListItem + indexChange;
 
         if (newIndex > (filteredDirectoryFiles.length - 1)) {

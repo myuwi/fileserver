@@ -8,12 +8,12 @@ import { THUMB_DIR } from '../thumbs';
 
 router.use('/thumb', express.static(THUMB_DIR));
 
-router.get('/fs', logRequest, fs.directory);
+router.get('/dir/:id?', logRequest, fs.directory);
 
-router.get('/fs/folders', logRequest, fs.folders);
+// router.get('/fs/folders', logRequest, fs.folders);
 
-router.get('/fs/file/:id', logRequest, fs.file);
+router.get('/file/:id', logRequest, fs.file);
 
-router.get('/fs/file/:id/download', logRequest, fs.download);
+router.get('/file/:id/download', logRequest, fs.download);
 
 export { router };

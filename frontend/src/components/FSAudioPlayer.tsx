@@ -248,7 +248,7 @@ export const FSAudioPlayer = ({ queue, setQueue }: Props) => {
         }
     }, [playing, queue]);
 
-    const src = 'http://192.168.1.106:3000/api/fs/file/' + queueCurrent.id;
+    const src = 'http://192.168.1.106:3000/api/file/' + queueCurrent.id;
 
     return (
         <div className="fs-audio">

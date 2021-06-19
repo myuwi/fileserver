@@ -4,16 +4,18 @@ import { Icon } from './Icon';
 import { mdiFolder, mdiFile, mdiImage, mdiVideo, mdiMusicBox, mdiPlay } from '@mdi/js';
 
 import { useLongPress } from '../hooks/useLongPress';
+import { FsFile } from '../types';
+import { copyToClipboard } from '../Utils';
 
 type Props = {
     className?: string;
-    item: any;
-    onClick: (event: React.MouseEvent, item: any) => void;
-    onDoubleClick: (event: React.MouseEvent, item: any) => void;
-    onLongPress: (event: React.MouseEvent, item: any) => void;
+    item: FsFile;
+    onClick: (event: React.MouseEvent, item: FsFile) => void;
+    onDoubleClick: (event: React.MouseEvent, item: FsFile) => void;
+    onLongPress: (event: React.MouseEvent, item: FsFile) => void;
     selected: boolean;
-    onEnter: (item: any) => void;
-    onSpace: (event: React.KeyboardEvent<HTMLDivElement>, item: any) => void;
+    onEnter: (item: FsFile) => void;
+    onSpace: (event: React.KeyboardEvent<HTMLDivElement>, item: FsFile) => void;
     onFocus: (itemId: string) => void;
 }
 
@@ -54,6 +56,7 @@ const FSItem = React.forwardRef((props: Props, ref: React.ForwardedRef<HTMLDivEl
 
     const click = (e: React.MouseEvent) => {
         // console.log('Single Click', e.type)
+
         onClick(e, item);
     };
 
@@ -116,6 +119,22 @@ const FSItem = React.forwardRef((props: Props, ref: React.ForwardedRef<HTMLDivEl
         };
     }, [item.hasThumb, item.id]);
 
+    const date = useMemo(() => {
+        const parsed = item.name.match(/(20\d{2})-?(\d{2})-?(\d{2})/);
+
+        if (parsed) {
+            // const [, year, month, day] = parsed;
+            const year = parseInt(parsed[1]);
+            const month = parseInt(parsed[2]);
+            const day = parseInt(parsed[3]);
+
+            // console.log([year, month, day], item.name);
+            return { year, month, day };
+        }
+
+        return null;
+    }, [item.name]);
+
     return (
         <div
             className="fs-item"
@@ -126,12 +145,16 @@ const FSItem = React.forwardRef((props: Props, ref: React.ForwardedRef<HTMLDivEl
             aria-selected={selected}
             onKeyDown={handleKeyDown}
             onFocus={() => onFocus(item.id)}
+            onContextMenu={(e) => {
+                e.preventDefault();
+                copyToClipboard('http://192.168.1.106:3000/api/file/' + item.id);
+            }}
         >
             <div className="fs-item__img">
                 {thumbSrc ?
                     (
                         // <div className="thumb" style={{ backgroundImage: `url(${thumbSrc})` }} />
-                        <img src={thumbSrc} alt="thumb" />
+                        <img src={thumbSrc} alt="thumbnail" />
                     ) : (
                         <Icon icon={item.isDirectory ? mdiFolder : getFileType} />
                     )

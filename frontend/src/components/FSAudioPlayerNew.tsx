@@ -8,7 +8,7 @@ type Props = {
 }
 
 const FSAudioPlayer = ({ media, onError, }: Props) => {
-    const src = 'http://192.168.1.106:3000/api/fs/file/' + media.id;
+    const src = 'http://192.168.1.106:3000/api/file/' + media.id;
 
     useEffect(() => {
         LOGGER.debug(`Loading audio with src: ${src}`);

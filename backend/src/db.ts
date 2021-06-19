@@ -2,7 +2,7 @@ import Knex from 'knex';
 import { DbEntry } from './types';
 import { generateId } from './util';
 
-const knex = Knex({
+export const knex = Knex({
     client: 'sqlite3',
     connection: {
         filename: './db.sqlite'
@@ -12,7 +12,8 @@ const knex = Knex({
 export const createSchema = () =>
     knex.schema
         .createTable('files', (t: any) => {
-            t.string('id').notNullable().unique();
+            t.string('id', 8).notNullable().unique();
+            t.string('parent', 8);
             t.string('url').notNullable().unique();
         })
         .then(() => {
@@ -39,7 +40,6 @@ export const dropSchema = () =>
 
 
 
-// TODO: Make everything link with IDs instead of paths
 export const db = {
     getMultipleByUrl: async (pathArr: string[]): Promise<DbEntry[]> => {
         return await knex<DbEntry>('files')

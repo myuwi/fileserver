@@ -22,5 +22,6 @@ export type VideoMetadata = {
 
 export type DbEntry = {
     id: string;
+    parent?: string;
     url: string;
 }

@@ -45,15 +45,11 @@ const FSMediaViewer = ({ viewerMedia, setViewerMedia }: Props) => {
             close={close}
         />,
         image: <img
-            src={'http://192.168.1.106:3000/api/fs/file/' + viewerMedia.id}
+            src={'http://192.168.1.106:3000/api/file/' + viewerMedia.id}
             alt=''
         />,
-        // audio: <audio src={'http://192.168.1.106:3000/api/fs/file/' + viewerMedia.id} controls />
+        // audio: <audio src={'http://192.168.1.106:3000/api/file/' + viewerMedia.id} controls />
         audio: <FSAudioPlayer media={viewerMedia} />
-    };
-
-    const download = () => {
-        window.open('http://192.168.1.106:3000/api/fs/file/' + viewerMedia.id + '/download');
     };
 
     const classes = pip ? 'fs-media-viewer pip' : 'fs-media-viewer';

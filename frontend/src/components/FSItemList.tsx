@@ -15,7 +15,7 @@ type Props = {
     fetching: boolean;
     setSelectedFiles: React.Dispatch<React.SetStateAction<string[]>>;
     selectedFiles: string[];
-    setFocusedListItem: any;
+    setFocusedListItem: (i: number) => void;
     setDirectoryId: (id: string) => void;
     setViewerMedia: (media: any) => void;
 }
@@ -35,7 +35,7 @@ const FSItemList = ({ files, fileRefs, fetching, selectedFiles, setSelectedFiles
 
     const isMobile = useMobile();
 
-    const setSelected = (e: any, item: any) => {
+    const setSelected = (e: any, item: FsFile) => {
         const id = item.id;
 
         // console.log(item)
@@ -97,14 +97,14 @@ const FSItemList = ({ files, fileRefs, fetching, selectedFiles, setSelectedFiles
         }
     }, []);
 
-    const itemPrimaryAction = (item: any) => {
+    const itemPrimaryAction = (item: FsFile) => {
         if (item.isDirectory) {
             return setDirectoryId(item.id);
         }
 
-        const extension = item.name.split('.').pop().trim().toLowerCase();
+        const extension = item.name.split('.').pop()?.trim().toLowerCase();
 
-        const getTypeOf = (extension: string) => {
+        const getTypeOf = (extension?: string) => {
             switch (extension) {
                 case 'gif':
                 case 'jpg':
@@ -167,7 +167,7 @@ const FSItemList = ({ files, fileRefs, fetching, selectedFiles, setSelectedFiles
             ) : (
                 files.length ? (
                     <div className={itemListClasses} ref={itemlistRef}>
-                        {files.map((item: any, i: number) => {
+                        {files.map((item, i: number) => {
                             const selected = selectedFiles.includes(item.id);
                             return (
                                 <FSItem

@@ -19,7 +19,8 @@ import {
 import { isNumeric } from '../util';
 
 export const directory = async (req: Request, res: Response) => {
-    const reqDir = req.query.dir;
+    // const reqDir = req.query.dir;
+    const reqDir = req.params.id;
     const flattenDepth = req.query.flatten;
 
     let pathInfo;

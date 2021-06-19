@@ -26,7 +26,7 @@ type Props = {
 const FSVideoPlayer = ({ media, onError, onImmersedChange, mouseMoving, toggleFullScreen, fullscreen = false, close }: Props) => {
     // const document: any = window.document
 
-    const src = 'http://192.168.1.106:3000/api/fs/file/' + media.id;
+    const src = 'http://192.168.1.106:3000/api/file/' + media.id;
 
 
     const [error, setError] = useState(false);
@@ -302,7 +302,6 @@ const FSVideoPlayer = ({ media, onError, onImmersedChange, mouseMoving, toggleFu
 
 
     const clearTimeouts = () => {
-
         if (clickTimeout.current) {
             clearTimeout(clickTimeout.current);
             clickTimeout.current = null;
@@ -487,7 +486,7 @@ const FSVideoPlayer = ({ media, onError, onImmersedChange, mouseMoving, toggleFu
                     </div>
 
                     {error && (
-                        <div className="error">Unable to load the content in the web player</div>
+                        <div className="error">Unable to load content in the web player.</div>
                     )}
 
                     {!error && (
