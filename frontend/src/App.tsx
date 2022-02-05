@@ -1,22 +1,13 @@
 import { useEffect } from 'react';
 
-import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { FileSystem } from './views/FileSystem';
 import { useWindowSize } from './hooks/useWindowSize';
 
 import { MobileProvider } from './context/MobileProvider';
 
-import createPersistedState from 'use-persisted-state';
-const useDarkMode = createPersistedState('darkMode');
-
-const App = () => {
+export const App = () => {
 	const windowSize = useWindowSize();
-
-	const [darkMode] = useDarkMode(false);
-
-	useEffect(() => {
-		document.documentElement.classList.toggle('theme-dark', darkMode);
-	}, [darkMode]);
 
 	const setVh = () => {
 		const vh = window.innerHeight * 0.01;
@@ -36,14 +27,11 @@ const App = () => {
 	return (
 		<MobileProvider>
 			<Router>
-				<Switch>
-					<Route path='/:id?' >
-						<FileSystem />
-					</Route>
-				</Switch>
+				<Routes>
+					<Route index element={<FileSystem />} />
+					<Route path=":id" element={<FileSystem />} />
+				</Routes>
 			</Router>
 		</MobileProvider>
 	);
 };
-
-export { App };

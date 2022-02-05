@@ -2,18 +2,18 @@ import * as express from 'express';
 const router = express.Router();
 
 import { __rootdir__ } from '../root';
-import { fs } from '../controllers';
-import { logRequest } from '../middleware';
+import * as controller from '../controllers';
+import { logRequest } from '../middleware/logRequest';
 import { THUMB_DIR } from '../thumbs';
 
 router.use('/thumb', express.static(THUMB_DIR));
 
-router.get('/dir/:id?', logRequest, fs.directory);
+router.get('/dir/:id?', logRequest, controller.directory);
 
-// router.get('/fs/folders', logRequest, fs.folders);
+router.get('/folders', logRequest, controller.folders);
 
-router.get('/file/:id', logRequest, fs.file);
+router.get('/file/:id', logRequest, controller.file);
 
-router.get('/file/:id/download', logRequest, fs.download);
+router.get('/file/:id/download', logRequest, controller.download);
 
 export { router };

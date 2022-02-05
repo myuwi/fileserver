@@ -1,5 +1,6 @@
 import { promises as fsPromises } from 'graceful-fs';
 import * as ffmpeg from 'fluent-ffmpeg';
+import * as mm from 'music-metadata';
 import * as sharp from 'sharp';
 import * as path from 'path';
 import { __rootdir__ } from './root';
@@ -18,7 +19,6 @@ export const THUMB_EXTENSION = '.jpg';
  */
 export const THUMB_DIR = path.join(__rootdir__, '..', 'thumbs');
 
-
 /**
  * Returns the dimensions of a video file.
  */
@@ -31,21 +31,22 @@ const getDimentions = (filePath: string) => {
                 return reject(err);
             }
 
-            const stream = metadata.streams.find((stream) =>
-                stream.codec_type === 'video' && typeof stream.width === 'number' && typeof stream.height === 'number'
+            const stream = metadata.streams.find(
+                (stream) =>
+                    stream.codec_type === 'video' &&
+                    typeof stream.width === 'number' &&
+                    typeof stream.height === 'number'
             );
 
-            if (!stream || !stream.height || !stream.width) return reject('Couldn\'t find video dimensions');
+            if (!stream || !stream.height || !stream.width) return reject("Couldn't find video dimensions");
 
             return resolve({
                 height: stream.height,
-                width: stream.width
+                width: stream.width,
             });
         });
     });
 };
-
-
 
 export const getFileThumbnail = async (id: string) => {
     if (!id) return false;
@@ -59,7 +60,34 @@ export const getFileThumbnail = async (id: string) => {
     }
 };
 
+export const generateAudioThumbnail = async (filePath: string, fileId: string) => {
+    if (!filePath || !fileId) return false;
 
+    const thumbName = `${fileId}${THUMB_EXTENSION}`;
+
+    try {
+        const metadata = await mm.parseFile(filePath);
+
+        if (!metadata.common.picture || !metadata.common.picture.length) return false;
+
+        const buffer = metadata.common.picture[0].data;
+
+        await sharp(buffer)
+            .resize(THUMB_SIZE, THUMB_SIZE, {
+                kernel: sharp.kernel.nearest,
+                // fit: 'cover',
+                fit: 'outside',
+            })
+            .toFile(path.join(THUMB_DIR, thumbName));
+
+        console.log(`Thumbnail generated: ${thumbName}`);
+        return true;
+    } catch (err: any) {
+        console.error(err.message);
+        console.log('Failed to generate thumbnail for ' + filePath);
+        return false;
+    }
+};
 
 export const generateVideoThumbnail = async (filePath: string, fileId: string) => {
     if (!filePath || !fileId) return false;
@@ -85,10 +113,9 @@ export const generateVideoThumbnail = async (filePath: string, fileId: string) =
                     timestamps: ['10%'],
                     filename: thumbName,
                     folder: THUMB_DIR,
-                    size: size // '?x200'
+                    size: size, // '?x200'
                 });
         });
-
 
         console.log(`Thumbnail generated: ${thumbName}`);
         return true;
@@ -98,8 +125,6 @@ export const generateVideoThumbnail = async (filePath: string, fileId: string) =
         return false;
     }
 };
-
-
 
 export const generateImageThumbnail = async (filePath: string, fileId: string) => {
     if (!filePath || !fileId) return false;
@@ -117,7 +142,7 @@ export const generateImageThumbnail = async (filePath: string, fileId: string) =
             })
             .toFile(path.join(THUMB_DIR, thumbName));
 
-
+        console.log(`Thumbnail generated: ${thumbName}`);
         return true;
     } catch (err) {
         // console.log(err)

@@ -17,7 +17,7 @@ type Props = {
 }
 
 // TODO: Close Search with back button (impossible?)
-const FSAppBar = ({ breadcrumbs, toggleSettings, backDirectory, searchQuery, setSearchQuery, selectedFiles, setSelectedFiles }: Props) => {
+export const FSAppBar = ({ breadcrumbs, toggleSettings, backDirectory, searchQuery, setSearchQuery, selectedFiles, setSelectedFiles }: Props) => {
 
     const searchBarRef = useRef<HTMLInputElement>(null);
 
@@ -96,7 +96,7 @@ const FSAppBar = ({ breadcrumbs, toggleSettings, backDirectory, searchQuery, set
                 <input
                     ref={searchBarRef}
                     type="text"
-                    className="searchField"
+                    className="flex-auto text-base leading-4 ml-8 outline-none border-none bg-transparent whitespace-nowrap overflow-hidden overflow-ellipsis"
                     placeholder="Search something"
                     value={searchQuery}
                     onChange={inputOnChange}
@@ -113,13 +113,9 @@ const FSAppBar = ({ breadcrumbs, toggleSettings, backDirectory, searchQuery, set
                 </AppBar.IconButton>
             )}
 
-            {!searchOpen && (
-                <AppBar.IconButton className="dotsIcon" onClick={toggleSettings}>
-                    <Icon icon={mdiDotsVertical} />
-                </AppBar.IconButton>
-            )}
+            <AppBar.IconButton className="ml-4" onClick={toggleSettings}>
+                <Icon icon={mdiDotsVertical} />
+            </AppBar.IconButton>
         </AppBar>
     );
 };
-
-export { FSAppBar };

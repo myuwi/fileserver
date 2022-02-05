@@ -1,8 +1,14 @@
 import { useRef } from 'react';
+import * as React from 'react';
 
-type MouseEventFn = (e: React.MouseEvent) => void;
+type MouseEventFn<T> = (e: React.MouseEvent<T> | React.TouchEvent<T>) => void;
 
-const useLongPress = (onClick: MouseEventFn, onDoubleClick: MouseEventFn, onLongPress: MouseEventFn) => {
+export const useLongPress = <T,>(
+    onClick: MouseEventFn<T>,
+    onDoubleClick: MouseEventFn<T>,
+    onLongPress: MouseEventFn<T>,
+    longPressMovethreshold = 5
+) => {
     // console.log('useLongPress render')
     const longPressTriggered = useRef(false);
 
@@ -22,36 +28,36 @@ const useLongPress = (onClick: MouseEventFn, onDoubleClick: MouseEventFn, onLong
         // console.log(coords.current)
         // console.log(startCoords.current)
 
-        const movedX = Math.abs(startCoords.current.x - x) > 20;
-        const movedY = Math.abs(startCoords.current.y - y) > 20;
+        const movedX = Math.abs(startCoords.current.x - x) > longPressMovethreshold;
+        const movedY = Math.abs(startCoords.current.y - y) > longPressMovethreshold;
         // console.log(movedX, movedY)
 
         if (movedX || movedY) {
             // console.log('[Debug] Moved too far, canceling click event.')
-            clear(null, true);
+            clear(undefined, true);
         }
     };
 
-    const start = (e: any) => {
+    const start = (e: React.MouseEvent<T> | React.TouchEvent<T>) => {
         e.preventDefault();
         e.stopPropagation();
 
         // console.log(e.buttons)
 
-        if (!e.buttons || e.buttons & 1) {
+        if (!('buttons' in e) || e.buttons & 1) {
             shouldTriggerClick.current = true;
 
             switch (e.type) {
                 case 'mousedown':
                     startCoords.current = {
-                        x: e.clientX,
-                        y: e.clientY
+                        x: (e as React.MouseEvent<T>).clientX,
+                        y: (e as React.MouseEvent<T>).clientY
                     };
                     break;
                 case 'touchstart':
                     startCoords.current = {
-                        x: e.touches[0].clientX,
-                        y: e.touches[0].clientY
+                        x: (e as React.TouchEvent<T>).touches[0].clientX,
+                        y: (e as React.TouchEvent<T>).touches[0].clientY
                     };
                     break;
             }
@@ -72,12 +78,12 @@ const useLongPress = (onClick: MouseEventFn, onDoubleClick: MouseEventFn, onLong
 
         switch (e.type) {
             case 'mousemove':
-                if (e.buttons === 1) {
-                    checkMove({
-                        x: e.clientX,
-                        y: e.clientY
-                    });
-                }
+                if (e.buttons !== 1) break;
+
+                checkMove({
+                    x: e.clientX,
+                    y: e.clientY
+                });
                 break;
             case 'touchmove':
                 checkMove({
@@ -128,14 +134,12 @@ const useLongPress = (onClick: MouseEventFn, onDoubleClick: MouseEventFn, onLong
     };
 
     return {
-        onMouseDown: (e: React.MouseEvent) => start(e),
-        onMouseMove: (e: React.MouseEvent) => move(e),
-        onMouseUp: (e: React.MouseEvent) => clear(e),
+        onMouseDown: (e: React.MouseEvent<T>) => start(e),
+        onMouseMove: (e: React.MouseEvent<T>) => move(e),
+        onMouseUp: (e: React.MouseEvent<T>) => clear(e),
         // onMouseLeave: e => clear(e, true),
-        onTouchStart: (e: React.TouchEvent) => start(e),
-        onTouchMove: (e: React.TouchEvent) => move(e),
-        onTouchEnd: (e: React.TouchEvent) => clear(e)
+        onTouchStart: (e: React.TouchEvent<T>) => start(e),
+        onTouchMove: (e: React.TouchEvent<T>) => move(e),
+        onTouchEnd: (e: React.TouchEvent<T>) => clear(e)
     };
 };
-
-export { useLongPress };

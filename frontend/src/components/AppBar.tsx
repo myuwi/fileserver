@@ -6,10 +6,10 @@ type Props = {
 }
 
 
-const AppBar = ({ children, ...rest }: Props) => {
+export const AppBar = ({ children, ...rest }: Props) => {
 
     return (
-        <div className="AppBar" {...rest}>
+        <div className="flex flex-row flex-nowrap items-center flex-none absolute z-20 top-0 inset-x-0 overflow-hidden h-14 px-4 bg-white" {...rest}>
             {children}
         </div>
     );
@@ -22,11 +22,9 @@ type ButtonProps = DetailedHTMLProps<
 >
 
 const AppBarIconButton = ({ children, className, ...props }: ButtonProps) => {
-    const classes = className ? `AppBarIconButton ${className}` : 'AppBarIconButton';
-
     return (
         <button
-            className={classes}
+            className={`h-6 w-6 p-0 mx-0 my-4 border-none outline-none focus:outline-none bg-transparent text-secondary-800${className ? ` ${className}` : ''}`}
             {...props}
         >{children}</button>
     );
@@ -39,11 +37,9 @@ type TitleProps = {
 
 const AppBarTitle = ({ children }: TitleProps) => {
     return (
-        <div className="AppBarTitle">{children}</div>
+        <div className="flex-auto text-base leading-4 mx-8 font-bold whitespace-nowrap overflow-hidden overflow-ellipsis">{children}</div>
     );
 };
 
 AppBar.IconButton = AppBarIconButton;
 AppBar.Title = AppBarTitle;
-
-export { AppBar };

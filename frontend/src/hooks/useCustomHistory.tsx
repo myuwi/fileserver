@@ -1,24 +1,27 @@
 import { useEffect, useState, useRef } from 'react';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useNavigationType, useLocation } from 'react-router-dom';
 import { LOGGER } from '../LOGGER';
 
-const useCustomHistory = () => {
+export const useCustomHistory = () => {
     const location = useLocation();
-    const history = useHistory();
+    const navigationType = useNavigationType();
 
     const lastKey = useRef<string | null>(null);
 
     const [canGoForward, setCanGoForward] = useState(false);
     const [canGoBack, setCanGoBack] = useState(false);
 
-    const stack = useRef<string[]>(['a']);
+    const stack = useRef<string[] | null>(null);
 
     const getStack = (): string[] => {
-        LOGGER.debug('Getting History Stack from Session Storage');
+        if (stack.current === null) {
+            LOGGER.debug('Getting History Stack from Session Storage');
+            const h = sessionStorage.getItem('history');
 
-        const h = sessionStorage.getItem('history');
+            return h ? JSON.parse(h) : [];
+        }
 
-        return h ? JSON.parse(h) : [];
+        return stack.current;
     };
 
     const setStack = (newStack: string[]) => {
@@ -27,16 +30,15 @@ const useCustomHistory = () => {
         sessionStorage.setItem('history', JSON.stringify(newStack));
     };
 
-    if (stack.current[0] === 'a') {
-        stack.current = getStack();
-    }
-
     const [stackState, setStackState] = useState(stack.current);
 
     useEffect(() => {
-        // For some reason the first render of the page
-        // doesn't have a key so we'll give it a key of 'aaaaaa'
-        const currentKey = location.key || 'aaaaaa';
+        // Get initial stack
+        if (!stack.current) {
+            stack.current = getStack();
+        }
+
+        const currentKey = location.key;
 
         // console.log(history, location)
         // console.log('Last Key', lastKey.current)
@@ -48,7 +50,7 @@ const useCustomHistory = () => {
         const currentIndex = stack.current.indexOf(lastKey.current || currentKey);
         // console.log('Current Index', currentIndex)
 
-        const action = history.action;
+        const action = navigationType;
         // console.log('ACTION: %s', action)
 
         switch (action) {
@@ -91,5 +93,3 @@ const useCustomHistory = () => {
 
     return { canGoForward, canGoBack, stack: stackState };
 };
-
-export { useCustomHistory };

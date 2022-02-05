@@ -6,9 +6,10 @@ type Props = {
     value: any;
 }
 
-const RadioGroup = ({ items, value, onChange, ...rest }: Props) => {
-    const handleSetChecked = (i: number) => {
-        if (typeof onChange === 'function') return onChange(i);
+export const RadioGroup = ({ items, value, onChange, ...rest }: Props) => {
+    const handleSetChecked = (e: any) => {
+        console.log(e);
+        if (typeof onChange === 'function') return onChange(e.value);
     };
 
     return (
@@ -17,11 +18,9 @@ const RadioGroup = ({ items, value, onChange, ...rest }: Props) => {
             <div className="radio-buttons">
                 {items.map((e, i: number) => {
                     const checked = value === e.value;
-                    return <RadioButton key={e.value} label={e.name} checked={checked} onChange={() => handleSetChecked(e.value)} />;
+                    return <RadioButton key={e.value} label={e.name} checked={checked} onChange={() => handleSetChecked(e)} />;
                 })}
             </div>
         </div>
     );
 };
-
-export { RadioGroup };

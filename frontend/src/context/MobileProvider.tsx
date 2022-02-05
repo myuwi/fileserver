@@ -3,7 +3,7 @@ import { useContext, useEffect, useState } from 'react';
 
 import { isMobile } from 'react-device-detect';
 
-const MobileContext = React.createContext<boolean>(false);
+const MobileContext = React.createContext<boolean>(isMobile);
 
 export function useMobile() {
     return useContext(MobileContext);

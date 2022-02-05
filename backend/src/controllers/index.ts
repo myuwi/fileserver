@@ -1,1 +1,4 @@
-export * as fs from './fs';
+export { directory } from './directory';
+export { download } from './download';
+export { file } from './file';
+export { folders } from './folders';

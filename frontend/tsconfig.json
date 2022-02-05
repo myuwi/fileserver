@@ -9,6 +9,10 @@
         "allowJs": false,
         "sourceMap": true,
         "allowSyntheticDefaultImports": false,
-        "noImplicitAny": true
+        "noImplicitAny": true,
+        "baseUrl": ".",
+        "paths": {
+            "@backend-types": ["../backend/src/types.ts"]
+        }
     }
 }

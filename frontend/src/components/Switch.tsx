@@ -4,7 +4,7 @@ type Props = {
     disabled?: boolean;
 }
 
-const Switch = ({ checked, onChange, disabled = false }: Props) => {
+export const Switch = ({ checked, onChange, disabled = false }: Props) => {
 
     const handleChange = () => {
         if (disabled) return;
@@ -23,5 +23,3 @@ const Switch = ({ checked, onChange, disabled = false }: Props) => {
         </div>
     );
 };
-
-export { Switch };

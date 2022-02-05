@@ -1,5 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
-	font-size: 14px;
+	font-size: 16px;
 	--hue: 225;
 
 	// --body: #eff1f5;
@@ -42,17 +46,20 @@
 * {
 	box-sizing: border-box;
 
-	-webkit-user-select: none;
-	-ms-user-select: none;
-	user-select: none;
+	// -webkit-user-select: none;
+	// -ms-user-select: none;
+	// user-select: none;
+}
+
+html {
+	overflow: hidden;
 }
 
 body {
-	// font-family: 'Exo 2', sans-serif;
-	font-family: 'Nunito', sans-serif;
-	background-color: var(--body);
-	margin: 0;
-	color: var(--text);
+	// font-family: 'Nunito', sans-serif;
+	// background-color: var(--body);
+	// margin: 0;
+	// color: var(--text);
 	height: 100vh;
 	height: vh(100);
 }
@@ -462,7 +469,7 @@ button.button {
 	flex: 0 0 auto;
 
 	position: absolute;
-	z-index: 999;
+	z-index: 20;
 	top: 0;
 	left: 0;
 	right: 0;
@@ -527,9 +534,9 @@ button.button {
 	position: relative;
 	// margin-top: 50px;
 
-	.fs.mobile & {
-		// margin-top: 56px;
-	}
+	// .fs.mobile & {
+	// 	margin-top: 56px;
+	// }
 
 	.spinner {
 		position: absolute;
@@ -933,58 +940,6 @@ button.button {
 
 		.media-queue {
 			display: none;
-		}
-	}
-}
-
-.media-queue {
-	display: flex;
-	flex-flow: column nowrap;
-	flex: 1 1 auto;
-	width: 100%;
-	background: var(--body);
-
-	overflow: hidden;
-
-	.queue-header {
-		display: flex;
-		flex-flow: row nowrap;
-		flex: 0 0 auto;
-		justify-content: space-between;
-		align-items: center;
-
-		span {
-			margin-left: 16px;
-		}
-
-		.icon-button {
-			padding: 12px;
-		}
-	}
-
-	.queue-items {
-		overflow-y: auto;
-
-		.queue-item {
-			display: flex;
-			flex-flow: row nowrap;
-			flex: 0 0 auto;
-			align-items: center;
-
-			&.current {
-				background: var(--color1);
-			}
-
-			.title {
-				padding: 8px 0 8px 16px;
-				flex: 1 1 auto;
-			}
-
-			.icon-button {
-				color: var(--text-secondary);
-				padding: 20px 16px;
-				touch-action: none;
-			}
 		}
 	}
 }
@@ -1438,8 +1393,7 @@ button.button {
 			left: 0;
 			right: 0;
 			color: #fff;
-			// height: 40px;
-			// background: rgba(0, 0, 0, 0.4);
+			z-index: 30;
 			pointer-events: all;
 			padding: 8px;
 
@@ -1792,4 +1746,8 @@ button.button {
 	to {
 		-webkit-transform: rotate(360deg);
 	}
+}
+
+.border-t-transparent {
+	border-top-color: transparent;
 }

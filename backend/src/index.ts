@@ -14,7 +14,7 @@ app.disable('etag');
 app.use(cors());
 app.use(express.json());
 
-import { createSchema, dropSchema } from './db';
+import { createSchema, dropSchema } from './database/schema';
 // dropSchema();
 createSchema();
 

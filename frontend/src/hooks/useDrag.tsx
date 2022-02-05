@@ -1,9 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 
-const useDrag = (nodeRef: React.MutableRefObject<HTMLElement | null>) => {
-    // const logEnabled = true
-    // const log = logEnabled ? console.log : null
-
+export const useDrag = (nodeRef: React.MutableRefObject<HTMLElement | null>) => {
     const [dragging, setDragging] = useState(false);
 
     const [coords, setCoords] = useState<{ x: number, y: number } | null>(null);
@@ -23,7 +20,7 @@ const useDrag = (nodeRef: React.MutableRefObject<HTMLElement | null>) => {
 
     const inputType = useRef<'mouse' | 'touch'>('mouse');
 
-    const handleDragStart = (e: any) => {
+    const handleDragStart = (e: MouseEvent | TouchEvent) => {
         if (e.type === 'touchstart' && e.cancelable) {
             e.preventDefault();
         }
@@ -34,39 +31,37 @@ const useDrag = (nodeRef: React.MutableRefObject<HTMLElement | null>) => {
         document.addEventListener(events[inputType.current].end, handleDragStop);
     };
 
-    const handleDrag = (e: any) => {
-        if (e.type === 'mousemove' && !(e.buttons & 1)) return;
-
-        // log(e)
+    const handleDrag = (e: Event) => {
+        if (e.type === 'mousemove' && !((e as MouseEvent).buttons & 1)) return;
 
         setCoords({
-            x: e.clientX || e.touches[0].clientX,
-            y: e.clientY || e.touches[0].clientY
+            x: (e as MouseEvent).clientX || (e as TouchEvent).touches[0].clientX,
+            y: (e as MouseEvent).clientY || (e as TouchEvent).touches[0].clientY
         });
     };
 
-    const handleDragStop = (e: any) => {
+    const handleDragStop = (e: Event) => {
         setDragging(false);
 
         document.removeEventListener(events[inputType.current].move, handleDrag);
         document.removeEventListener(events[inputType.current].end, handleDragStop);
     };
 
-    const onMouseDown = (e: any) => {
+    const onMouseDown = (e: MouseEvent) => {
         inputType.current = 'mouse';
         return handleDragStart(e);
     };
 
-    const onMouseUp = (e: any) => {
+    const onMouseUp = (e: MouseEvent) => {
         return handleDragStop(e);
     };
 
-    const onTouchStart = (e: any) => {
+    const onTouchStart = (e: TouchEvent) => {
         inputType.current = 'touch';
         return handleDragStart(e);
     };
 
-    const onTouchEnd = (e: any) => {
+    const onTouchEnd = (e: TouchEvent) => {
         return handleDragStop(e);
     };
 
@@ -96,5 +91,3 @@ const useDrag = (nodeRef: React.MutableRefObject<HTMLElement | null>) => {
 
     return { coords, dragging };
 };
-
-export { useDrag };

@@ -1,35 +1,55 @@
 import * as React from 'react';
 import { ButtonHTMLAttributes, DetailedHTMLProps } from 'react';
 
-import { Icon } from './Icon';
+import { Icon, sizeClasses, positionClasses } from './Icon';
 
-type Props = DetailedHTMLProps<
-    ButtonHTMLAttributes<HTMLButtonElement>,
-    HTMLButtonElement
-> & {
-    disabled?: boolean;
+const variantClasses = {
+    none: '',
+    uniform: '',
+    wide: '',
+    'full-width': '',
+};
+
+const iconPositions = {
+    center: ' flex items-center justify-center',
+};
+
+type Props = DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement> & {
     icon: string;
-}
+    iconSize?: keyof typeof sizeClasses;
+    iconAlign?: keyof typeof iconPositions;
+    disabled?: boolean;
+    size?: keyof typeof sizeClasses;
+    variant?: keyof typeof variantClasses;
+    position?: keyof typeof positionClasses;
+};
 
-
-const IconButton = ({ className, disabled = false, icon, onClick, ...props }: Props) => {
+export const IconButton = ({
+    icon,
+    iconSize = 'full',
+    iconAlign = 'center',
+    className = '',
+    size = '24',
+    variant = 'none',
+    disabled = false,
+    onClick,
+    ...props
+}: Props) => {
     const handleClick = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
         if (disabled || !onClick) return;
         onClick(e);
     };
 
-    const classes = !className ? 'icon-button' : `icon-button ${className}`;
-
     return (
         <button
-            className={classes}
+            className={`${sizeClasses[size]}${iconPositions[iconAlign]} flex-shrink-0 outline-none focus:outline-none${
+                disabled ? ' opacity-30 cursor-default' : ''
+            } ${className}`}
             onClick={handleClick}
             aria-disabled={disabled}
             {...props}
         >
-            <Icon icon={icon} />
+            <Icon icon={icon} size={iconSize} />
         </button>
     );
 };
-
-export { IconButton };

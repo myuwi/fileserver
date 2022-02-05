@@ -3,37 +3,26 @@ import * as path from 'path';
 
 import * as ffmpeg from 'fluent-ffmpeg';
 
-import { DbEntry, File, VideoMetadata } from './types';
+import { DbEntry, File, FileOrFolder, Folder, VideoMetadata } from './types';
 
-import { db, knex } from './db';
+import { db, knex } from './database/db';
 import { __rootdir__ } from './root';
-import { generateImageThumbnail, generateVideoThumbnail, getFileThumbnail } from './thumbs';
+import { generateAudioThumbnail, generateImageThumbnail, generateVideoThumbnail, getFileThumbnail } from './thumbs';
 import { orderBy } from 'natural-orderby';
-
-export const DIRECTORIES = [
+export const DIRECTORIES: { base: string; folder: string }[] = [
     {
-        drive: 'E',
-        folder: 'Voice'
+        base: '/hdd1/',
+        folder: 'Torrent',
     },
     {
-        drive: 'E',
-        folder: 'Torrent'
+        base: '/hdd1/',
+        folder: 'Voice',
     },
-    {
-        drive: 'E',
-        folder: 'Music'
-    }
 ];
 
-const EXTENSIONS: {
-    [s: string]: string[];
-} = {
-    AUDIO: ['mp3', 'wav'],
-    VIDEO: ['avi', 'mkv', 'mp4', 'm4v', 'ts', 'webm'], // TS is also a video file format
-    IMAGE: ['gif', 'jpg', 'jpeg', 'png']
-};
+import { EXTENSIONS } from './constants';
 
-const isFileType = (file: string, type: string) => {
+const isFileType = (file: string, type: keyof typeof EXTENSIONS) => {
     const extension = file.split('.').pop()!.trim().toLowerCase();
     if (!extension) return false;
 
@@ -51,6 +40,18 @@ export const isAudioFile = (file: string) => isFileType(file, 'AUDIO');
 export const isVideoFile = (file: string) => isFileType(file, 'VIDEO');
 
 export const isImageFile = (file: string) => isFileType(file, 'IMAGE');
+
+export const getFileType = (file: string) => {
+    if (isVideoFile(file)) {
+        return 'video';
+    } else if (isAudioFile(file)) {
+        return 'audio';
+    } else if (isImageFile(file)) {
+        return 'image';
+    }
+
+    return undefined;
+};
 
 export const getVideoMetadata = (filePath: string) => {
     return new Promise<VideoMetadata>((resolve, reject) => {
@@ -70,20 +71,22 @@ export const getVideoMetadata = (filePath: string) => {
                         duration = ~~stream.duration;
                     } else {
                         // Convert HH:mm:ss to seconds
-                        // TODO: Change if else to for loop
                         if (stream.tags && stream.tags.DURATION && typeof stream.tags.DURATION === 'string') {
-                            const timestamp = (stream.tags.DURATION.split('.'))[0];
+                            const timestamp = stream.tags.DURATION.split('.')[0];
                             duration = timestamp.split(':').reduce((prev: number, cur: any, i: number, arr: any[]) => {
-                                return prev + +cur * Math.pow(60, (arr.length - 1) - i);
+                                return prev + +cur * Math.pow(60, arr.length - 1 - i);
                             }, 0);
-                        } else if (stream.tags && stream.tags.DURATION && typeof stream.tags['DURATION-eng'] === 'string') {
-                            const timestamp = (stream.tags['DURATION-eng'].split('.'))[0];
+                        } else if (
+                            stream.tags &&
+                            stream.tags.DURATION &&
+                            typeof stream.tags['DURATION-eng'] === 'string'
+                        ) {
+                            const timestamp = stream.tags['DURATION-eng'].split('.')[0];
                             duration = timestamp.split(':').reduce((prev, cur, i, arr) => {
-                                return prev + +cur * Math.pow(60, (arr.length - 1) - i);
+                                return prev + +cur * Math.pow(60, arr.length - 1 - i);
                             }, 0);
                         }
                     }
-
                 } else if (stream.codec_type === 'audio') {
                     audioCodec = stream.codec_name;
                 }
@@ -92,7 +95,7 @@ export const getVideoMetadata = (filePath: string) => {
             return resolve({
                 audioCodec,
                 videoCodec,
-                duration
+                duration,
             });
         });
     });
@@ -121,7 +124,7 @@ export const resolvePath = async (id?: string) => {
     if (!id) {
         return {
             dir: 'ROOT',
-            breadcrumbs: []
+            breadcrumbs: [],
         };
     }
 
@@ -135,11 +138,10 @@ export const resolvePath = async (id?: string) => {
     if (!_path) throw new Error();
 
     for (let i = 0; i < DIRECTORIES.length; i++) {
-
-        const basePath = `${DIRECTORIES[i].drive}:/${DIRECTORIES[i].folder}`;
+        const basePath = `${DIRECTORIES[i].base}${DIRECTORIES[i].folder}`;
 
         if (_path.startsWith(basePath)) {
-            dir = `${DIRECTORIES[i].drive}:/`;
+            dir = `${DIRECTORIES[i].base}`;
             selectedPath = _path.substring(dir.length);
             break;
         }
@@ -163,7 +165,7 @@ export const resolvePath = async (id?: string) => {
             const id = await getIdByUrl(filePath);
             folders.push({
                 id,
-                name: pathSegments[i]
+                name: pathSegments[i],
             });
         } else {
             throw new Error();
@@ -172,146 +174,153 @@ export const resolvePath = async (id?: string) => {
 
     return {
         dir: dir.replace(/\\/g, '/'),
-        breadcrumbs: folders
+        breadcrumbs: folders,
     };
 };
 
 export const mapFolders = async (_path: string): Promise<any[] | null> => {
     if (!_path) return null;
 
-    // const directories = []
-
     const directory = await fsPromises.readdir(_path);
 
-    const files = await Promise.all(
-        directory.map(async (e) => {
-            const dirPath = path.join(_path, e);
-            const stat = await fsPromises.lstat(dirPath);
+    // const files = await Promise.all(
+    //     directory
+    //         .filter(async (e) => {
+    //             const dirPath = path.join(_path, e);
+    //             const stat = await fsPromises.lstat(dirPath);
 
-            const isDirectory = stat.isDirectory();
-            if (!isDirectory) return null;
+    //             return stat.isDirectory();
+    //         })
+    //         .map(async (e) => {
+    //             const dirPath = path.join(_path, e);
 
-            const obj = {
-                name: e,
-                id: await getIdByUrl(dirPath),
-                // type: isDirectory ? 'folder' : 'file',
-                folders: await mapFolders(dirPath)
-            };
+    //             const obj = {
+    //                 name: e,
+    //                 id: await getIdByUrl(dirPath),
+    //                 // type: isDirectory ? 'folder' : 'file',
+    //                 folders: await mapFolders(dirPath),
+    //             };
 
-            // if (!isDirectory) obj.size = stat.size
+    //             // if (!isDirectory) obj.size = stat.size
 
-            return obj;
-        }).filter(Boolean)
-    );
+    //             return obj;
+    //         })
+    // );
 
-    // console.log(files);
+    const files = [];
+
+    for (let i = 0; i < directory.length; i++) {
+        const e = directory[i];
+
+        const dirPath = path.join(_path, e);
+        const stat = await fsPromises.lstat(dirPath);
+        if (!stat.isDirectory()) continue;
+
+        files.push({
+            name: e,
+            id: await getIdByUrl(dirPath),
+            folders: await mapFolders(dirPath),
+        });
+    }
 
     return files.filter(Boolean);
 };
 
-export const mapDirectory = async (dirPath: string, filesInDir: any[], flatten?: number): Promise<File[]> => {
+export const mapDirectory = async (dirPath: string, filesInDir: any[], flatten?: number): Promise<FileOrFolder[]> => {
     const files = await getDirFiles(dirPath);
 
     return files;
+};
 
-    // const files = await filesInDir.reduce(async (outputArr: File[] | Promise<File[]>, fileName: string, i) => {
-    //     const fileWithInfo = await fileInfo(dirPath, fileName, flatten);
+export const getDirFiles = async (dirPath: string, forceUpdate: boolean = false) => {
+    // forceUpdate = true; // for now
 
-    //     const fileArr = await outputArr;
-
+    // if (!forceUpdate) {
     //     try {
-    //         if (Array.isArray(fileWithInfo)) {
-    //             return [...fileArr, ...fileWithInfo];
-    //         } else {
-    //             return [...fileArr, fileWithInfo];
+    //         // const dbEntries = await knex<DbEntry>('files AS parent')
+    //         //     .select('parent.*')
+    //         //     .where('parent.url', dir)
+    //         //     .first()
+    //         //     .join('files', 'parent.id', '=', 'files.parent');
+
+    //         const dbEntries: DbEntry[] = await knex<DbEntry>('files')
+    //             .select('*')
+    //             .where('parent', curDirDbE.id);
+
+    //         if (dbEntries.length) {
+    //             console.log(dbEntries);
+    //             const files = await Promise.all(dbEntries.map(async (e) => await fileInfo(e.url)));
+    //             return files;
     //         }
+
     //     } catch (err) {
     //         console.log(err);
     //     }
+    // }
 
-    //     return [];
-    // }, []);
-
-    // return files;
+    return await updateDir(dirPath);
 };
 
-export const getDirFiles = async (dir: string, forceUpdate: boolean = false) => {
-    forceUpdate = true; // for now
-    const parent = await knex<DbEntry>('files')
-        .select('*')
-        .where('url', dir)
-        .first();
+/**
+ * Updates a directory's content and returns it
+ * @param dirPath Path to directory
+ * @returns List of items in the directory
+ */
+const updateDir = async (dirPath: string) => {
+    const curDirDbE = await knex<DbEntry>('files').select('*').where('url', dirPath).first();
 
-    if (!parent) return [];
+    // TODO: Recursively map folders to db
+    if (!curDirDbE) return [];
 
-    if (!forceUpdate) {
-        try {
-            // const dbEntries = await knex<DbEntry>('files AS parent')
-            //     .select('parent.*')
-            //     .where('parent.url', dir)
-            //     .first()
-            //     .join('files', 'parent.id', '=', 'files.parent');
+    const filePaths = (await fsPromises.readdir(dirPath)).map((f) => path.join(dirPath, f).replace(/\\/g, '/'));
 
-            const dbEntries: DbEntry[] = await knex<DbEntry>('files')
-                .select('*')
-                .where('parent', parent.id);
-
-            if (dbEntries.length) {
-                console.log(dbEntries);
-                const files = await Promise.all(dbEntries.map(async (e) => await fileInfo(e.url)));
-                return files;
-            }
-
-        } catch (err) {
-            console.log(err);
-        }
-    }
-
-
-    const filePaths = (await fsPromises.readdir(dir))
-        .map((f) =>
-            path.join(dir, f)
-                .replace(/\\/g, '/')
-        );
-
-
-    // console.log('filePaths');
-    // console.log(filePaths);
+    // console.log('filePaths', filePaths);
 
     const oldEntries = await db.getMultipleByUrl(filePaths);
 
-    // console.log('oldEntries');
-    // console.log(oldEntries);
+    // console.log('oldEntries', oldEntries);
 
-    const filesNotInDb = filePaths
-        .filter((fp) =>
-            !oldEntries.some((e) => e.url === fp)
-        );
+    const deletedFiles = (await db.getChildren(curDirDbE.id)).filter((dbE) => !filePaths.some((e) => e === dbE.url));
 
-    const newEntries = (await db.generateIds(filesNotInDb, 8))
-        .map((e) => {
-            e.parent = parent.id;
-            return e;
-        });
+    // console.log('deletedFiles', deletedFiles);
 
-    // console.log('newEntries');
-    // console.log(newEntries);
+    // TODO: Implement this better
+    // db.deleteManyById(deletedFiles.map((e) => e.id));
+
+    const filesNotInDb = filePaths.filter((fp) => !oldEntries.some((e) => e.url === fp));
+
+    const newEntries = (await db.generateIds(filesNotInDb, 8)).map((e) => {
+        e.parent = curDirDbE.id;
+        return e;
+    });
+
+    // console.log('newEntries', newEntries);
 
     if (newEntries.length) {
         await db.insertMany(newEntries);
     }
 
-    const items = orderBy(
-        [...oldEntries, ...newEntries],
-        [(v: DbEntry) => v.url]
-    );
+    const items = orderBy([...oldEntries, ...newEntries], [(v: DbEntry) => v.url]);
 
-    const files = await Promise.all(items.map(async (e) => await fileInfo(e.url)));
+    const CONCURRENT_ITEMS = 10;
+
+    let files: FileOrFolder[] = [];
+
+    let low = 0;
+    while (low < items.length) {
+        const high = Math.min(low + CONCURRENT_ITEMS, items.length);
+        const newFiles = await Promise.all(items.slice(low, high).map(async (e) => await fileInfo(e.url)));
+
+        files = [...files, ...newFiles];
+        low += CONCURRENT_ITEMS;
+    }
+
+    // const files = await Promise.all(items.map(async (e) => await fileInfo(e.url)));
 
     return files;
 };
 
-export const fileInfo = async (dirPath: string, fileName?: string, flatten = 0) => {
+export const fileInfo = async (dirPath: string, fileName?: string) => {
     let filePath;
 
     if (!fileName) {
@@ -327,50 +336,56 @@ export const fileInfo = async (dirPath: string, fileName?: string, flatten = 0) 
 
     const id = await getIdByUrl(filePath);
 
-    const item: File = {
-        name: fileName,
-        id: id,
-        isDirectory,
-        size: stat.size,
-        // devino: `${stat.dev}${stat.ino}`
-    };
+    if (!isDirectory) {
+        const item: File = {
+            name: fileName,
+            id,
+            type: 'FILE',
+            size: stat.size,
+            contentType: getFileType(fileName),
+        };
 
-    if (!isDirectory && (isVideoFile(filePath) || isImageFile(filePath))) {
-        try {
-            item.hasThumb = await getFileThumbnail(id);
+        if (!isDirectory && item.contentType) {
+            try {
+                item.hasThumb = await getFileThumbnail(id);
 
-            if (isVideoFile(filePath)) {
-                try {
-                    item.metadata = await getVideoMetadata(filePath);
-                } catch (err) {
-                    console.log(err);
+                if (isVideoFile(filePath)) {
+                    try {
+                        item.metadata = await getVideoMetadata(filePath);
+                    } catch (err) {
+                        console.log(err);
+                    }
                 }
-            }
 
-            // TODO: Queue for thumbnail creation to not destroy server performance
-            // Generate thumbnail
-            if (!item.hasThumb && isVideoFile(filePath)) {
-                item.hasThumb = await generateVideoThumbnail(filePath, id);
-            } else if (isImageFile(filePath)) {
-                item.hasThumb = await generateImageThumbnail(filePath, id);
+                // Generate thumbnail
+                if (!item.hasThumb) {
+                    switch (item.contentType) {
+                        case 'audio':
+                            item.hasThumb = await generateAudioThumbnail(filePath, id);
+                            break;
+                        case 'image':
+                            item.hasThumb = await generateImageThumbnail(filePath, id);
+                            break;
+                        case 'video':
+                            item.hasThumb = await generateVideoThumbnail(filePath, id);
+                            break;
+                    }
+                }
+            } catch (err) {
+                // console.log(err)
             }
-
-        } catch (err) {
-            // console.log(err)
         }
-    }
 
-    if (isDirectory) {
+        return item;
+    } else {
         const filesInDirectory = await fsPromises.readdir(filePath);
+        const item: Folder = {
+            name: fileName,
+            id,
+            type: 'FOLDER',
+            fileCount: filesInDirectory.length,
+        };
 
-        // if (flatten > 0) {
-        //     // console.log('x')
-        //     // files.flat()
-        //     return await mapDirectory(filePath, filesInDirectory, flatten - 1);
-        // }
-
-        item.fileCount = filesInDirectory.length;
+        return item;
     }
-
-    return item;
 };

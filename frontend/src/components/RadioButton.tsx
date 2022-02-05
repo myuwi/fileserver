@@ -6,7 +6,7 @@ type Props = {
     label?: string;
 }
 
-const RadioButton = ({ checked, onChange, label, ...rest }: Props) => {
+export const RadioButton = ({ checked, onChange, label, ...rest }: Props) => {
     const classes = classNames({
         'radio-button': true,
         selected: checked
@@ -19,6 +19,3 @@ const RadioButton = ({ checked, onChange, label, ...rest }: Props) => {
         </div>
     );
 };
-
-
-export { RadioButton };

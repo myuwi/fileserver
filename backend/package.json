@@ -23,6 +23,7 @@
         "graceful-fs": "^4.2.4",
         "knex": "^0.95.1",
         "mongodb": "^3.5.8",
+        "music-metadata": "^7.8.8",
         "mysql": "^2.18.1",
         "natural-orderby": "^2.0.3",
         "sharp": "^0.26.0",
@@ -40,6 +41,7 @@
         "@typescript-eslint/parser": "^4.2.0",
         "eslint": "^7.2.0",
         "nodemon": "^2.0.4",
+        "prettier": "^2.5.1",
         "ts-node": "^9.0.0",
         "ts-node-dev": "^1.0.0-pre.63",
         "typescript": "^4.0.3"

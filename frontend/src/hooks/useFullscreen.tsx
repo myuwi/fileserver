@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-const useFullscreen = (nodeRef: React.MutableRefObject<HTMLElement | null>): [boolean, (state: boolean) => void, () => void] => {
+export const useFullscreen = (nodeRef: React.MutableRefObject<HTMLElement | null>): [boolean, (state: boolean) => void, () => void] => {
     const [fullscreen, setFullscreenState] = useState(false);
 
     const toggleFullScreen = () => {
@@ -53,5 +53,3 @@ const useFullscreen = (nodeRef: React.MutableRefObject<HTMLElement | null>): [bo
 
     return [fullscreen, setFullscreen, toggleFullScreen];
 };
-
-export { useFullscreen };

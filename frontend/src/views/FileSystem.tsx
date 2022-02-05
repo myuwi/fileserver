@@ -1,14 +1,13 @@
 import * as React from 'react';
-import { useEffect, useState, useRef } from 'react';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 
 import Axios from 'axios';
 
-import { FsFile, ViewerMedia } from '../types';
+import { FileOrFolder, ViewerMedia } from '../types';
 
 import { mdiClose, mdiChevronRight, mdiChevronLeft, mdiFolder, mdiArrowUp, mdiRefresh } from '@mdi/js';
 
-import classNames from 'classnames';
 import { useCustomHistory } from '../hooks/useCustomHistory';
 import { useMobile } from '../context/MobileProvider';
 
@@ -17,46 +16,37 @@ import { Switch } from '../components/Switch';
 import { RadioGroup } from '../components/RadioGroup';
 
 import { FSAppBar } from '../components/FSAppBar';
-import { FSMediaViewer } from '../components/FSMediaViewer';
-import { FSSidenav } from '../components/FSSidenav';
-import { FSItemList } from '../components/FSItemList';
+import { MediaViewer } from '../components/MediaViewer';
+import { Sidenav } from '../components/Sidenav';
+import { ItemList } from '../components/ItemList';
 
 import { IconButton } from '../components/IconButton';
 import { Icon } from '../components/Icon';
 
 import { LOGGER } from '../LOGGER';
 
-import createPersistedState from 'use-persisted-state';
-import { FSBottomBar } from '../components/FSBottomBar';
+import { collator } from '../Utils';
 
-const useDarkMode = createPersistedState('darkMode');
-const useUiSize = createPersistedState('uiSize');
-const useListMode = createPersistedState('listMode');
-
+import { BottomBar } from '../components/BottomBar';
+import { UiSize, useSettings, ViewMode } from '../hooks/useSettings';
 
 // TODO: Split stuff to separate components
 // TODO: Context menu
 // TODO: Settings
 // TODO: Change document title based on Media
 
-type ParamTypes = {
-    id: string;
-}
-
-type LocationStateTypes = {
-    mediaOpen: boolean;
-}
-
-const FileSystem = () => {
+export const FileSystem = () => {
     const isMobile = useMobile();
 
     // TODO: Convert to a hook
     const [folders, setFolders] = useState(null);
-    const [directoryFiles, setDirectoryFiles] = useState<FsFile[]>([]);
-    const [fetching, setFetching] = useState<boolean>(false);
-    const [filteredDirectoryFiles, setFilteredDirectoryFiles] = useState<FsFile[]>([]);
+    const [directoryFiles, setDirectoryFiles] = useState<FileOrFolder[]>([]);
+    const [fetching, setFetching] = useState<boolean>(true);
+    const [filteredDirectoryFiles, setFilteredDirectoryFiles] = useState<FileOrFolder[]>([]);
 
     const firstRender = useRef(true);
+
+    const searchBarRef = useRef<HTMLInputElement>(null);
 
     const [fileRefs, setFileRefs] = useState<React.RefObject<HTMLDivElement>[]>([]);
 
@@ -65,9 +55,28 @@ const FileSystem = () => {
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [flattenDepth, setFlattenDepth] = useState(0);
 
-    const [uiSize, setUiSize] = useUiSize('m');
-    const [darkMode, setDarkMode] = useDarkMode(false);
-    const [listEnabled, setListEnabled] = useListMode(false);
+    const { settings, updateSettings } = useSettings();
+
+    const handleDarkModeChange = (enabled: boolean) => {
+        updateSettings({
+            type: 'DARK_MODE',
+            payload: enabled,
+        });
+    };
+
+    const handleUiSizeChange = (size: UiSize) => {
+        updateSettings({
+            type: 'UI_SIZE',
+            payload: size,
+        });
+    };
+
+    const handleViewModeChange = (viewMode: ViewMode) => {
+        updateSettings({
+            type: 'VIEW_MODE',
+            payload: viewMode,
+        });
+    };
 
     const [breadcrumbs, setBreadcrumbs] = useState<any[]>([]);
 
@@ -77,14 +86,14 @@ const FileSystem = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [viewerMedia, setViewerMedia] = useState<ViewerMedia | null>(null);
 
-    const history = useHistory();
+    const navigate = useNavigate();
 
-    const params = useParams<ParamTypes>();
+    const params = useParams();
     const directoryId = params.id;
 
-    const location = useLocation<LocationStateTypes>();
-
-    const collator = new Intl.Collator('fi', { numeric: true, sensitivity: 'base' });
+    // FIXME ?
+    // const location = useLocation<LocationStateTypes>();
+    const location = useLocation();
 
     useEffect(() => {
         if (viewerMedia && (!location.state || !location.state.mediaOpen)) {
@@ -98,21 +107,20 @@ const FileSystem = () => {
             firstRender.current = false;
 
             if (!viewerMedia && location.state && location.state.mediaOpen) {
-                history.replace(location.pathname);
+                navigate(location.pathname, { replace: true });
             }
-
         } else {
             if (viewerMedia) {
-                history.push(location.pathname, { mediaOpen: true });
+                navigate(location.pathname, { state: { mediaOpen: true } });
             } else if (!viewerMedia && location.state && location.state.mediaOpen) {
-                history.goBack();
+                navigate(-1);
             }
         }
     }, [viewerMedia]);
 
     useEffect(() => {
-        if (viewerMedia && viewerMedia.name) {
-            document.title = `${viewerMedia.name} - File Server`;
+        if (viewerMedia && viewerMedia.data.name) {
+            document.title = `${viewerMedia.data.name} - File Server`;
         } else {
             document.title = 'File Server';
         }
@@ -123,10 +131,10 @@ const FileSystem = () => {
     const setDirectoryId = (id: string) => {
         // console.log(id)
         if (!id) {
-            return history.push('');
+            return navigate('');
         }
 
-        history.push(`/${id}`);
+        navigate(`/${id}`);
     };
 
     const fetchFolders = async () => {
@@ -168,7 +176,7 @@ const FileSystem = () => {
             // TODO: Make proper error messages
             setDirectoryFiles([]);
             setFetching(false);
-            console.log(err.response);
+            console.log(err);
         }
     };
 
@@ -191,21 +199,16 @@ const FileSystem = () => {
         setSettingsOpen(!settingsOpen);
     };
 
-    const handleUiSizeChange = (e: any) => {
-        // console.log(e)
-        setUiSize(e);
-    };
-
     const changeFlattenDepth = () => {
         setFlattenDepth(flattenDepth > 0 ? 0 : 1);
     };
 
-    const filterFiles = (files: FsFile[]) => {
+    const filterFiles = (files: FileOrFolder[]) => {
         const filteredFiles = files
-            .filter((file: FsFile) => {
+            .filter((file: FileOrFolder) => {
                 if (!searchQuery || searchQuery === '') return true;
 
-                const words = searchQuery.toLowerCase().split(' ');
+                const words = searchQuery.toLowerCase().split(/ +/g);
 
                 let search = file.name.toLowerCase();
 
@@ -222,11 +225,11 @@ const FileSystem = () => {
 
                 return true;
             })
-            .sort((a: FsFile, b: FsFile) => {
-                if (a.isDirectory && !b.isDirectory) {
+            .sort((a: FileOrFolder, b: FileOrFolder) => {
+                if (a.type === 'FOLDER' && b.type === 'FILE') {
                     return -1;
                 }
-                if (!a.isDirectory && b.isDirectory) {
+                if (a.type === 'FILE' && b.type === 'FOLDER') {
                     return 1;
                 }
 
@@ -252,11 +255,10 @@ const FileSystem = () => {
         setFilteredDirectoryFiles(files);
     }, [searchQuery]);
 
-
     const handleIndexChange = (indexChange: number) => {
         let newIndex = focusedListItem + indexChange;
 
-        if (newIndex > (filteredDirectoryFiles.length - 1)) {
+        if (newIndex > filteredDirectoryFiles.length - 1) {
             newIndex = 0;
         } else if (newIndex < 0) {
             newIndex = filteredDirectoryFiles.length - 1;
@@ -273,7 +275,7 @@ const FileSystem = () => {
         return setViewerMedia(null);
     };
 
-    const handleKeyDown = (e: any) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
         switch (e.key) {
             // case 'Escape':
             //     if (viewerMedia) {
@@ -282,6 +284,16 @@ const FileSystem = () => {
 
             //     backDirectory()
             //     break
+            // case 'Escape':
+            //     if (searchFocused) {
+            //         focusList();
+            //     }
+            //     break;
+            case 'f':
+                if (!e.ctrlKey) break;
+                e.preventDefault();
+                searchBarRef.current?.focus();
+                break;
             case 'ArrowUp':
             case 'ArrowLeft':
                 handleIndexChange(-1);
@@ -293,7 +305,6 @@ const FileSystem = () => {
         }
     };
 
-
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown);
 
@@ -302,70 +313,97 @@ const FileSystem = () => {
         };
     }, [breadcrumbs, focusedListItem, filteredDirectoryFiles, viewerMedia]);
 
-
     useEffect(() => {
-        // if (!isMobile) fetchFolders();
+        if (!isMobile) fetchFolders();
         fetchDirectory();
         setSearchQuery('');
         setSelectedFiles([]);
     }, [directoryId, flattenDepth]);
 
-
     const uiSizes = [
         {
             name: 'XS',
-            value: 'xs'
+            value: 'xs',
         },
         {
             name: 'S',
-            value: 's'
+            value: 'sm',
         },
         {
             name: 'M',
-            value: 'm'
+            value: 'md',
         },
         {
             name: 'L',
-            value: 'l'
+            value: 'lg',
         },
         {
             name: 'XL',
-            value: 'xl'
-        }
+            value: 'xl',
+        },
     ];
 
-    const fsClasses = classNames({
-        fs: true,
-        mobile: isMobile
-    });
+    const bottomPadding = useMemo(() => {
+        return !isMobile ? ' pb-6' : '';
+    }, [isMobile]);
 
     return (
-        <div className={fsClasses}>
+        <div className="flex flex-row flex-nowrap overflow-hidden relative h-screen text-sm">
             {!isMobile ? (
-                <div className="fs-itemlist-controls">
-                    <div className="arrows">
-                        <IconButton icon={mdiChevronLeft} onClick={() => history.goBack()} disabled={!canGoBack} />
-                        <IconButton icon={mdiChevronRight} onClick={() => history.goForward()} disabled={!canGoForward} />
-                        <IconButton className="up" icon={mdiArrowUp} onClick={backDirectory} disabled={!breadcrumbs.length} />
+                <div className="bg-white h-12 flex flex-row flex-nowrap items-center absolute top-0 left-0 right-0 z-10 overflow-hidden px-4">
+                    <div className="flex flex-row flex-nowrap flex-none">
+                        <IconButton
+                            icon={mdiChevronLeft}
+                            iconSize="24"
+                            size="32"
+                            onClick={() => navigate(-1)}
+                            disabled={!canGoBack}
+                        />
+                        <IconButton
+                            icon={mdiChevronRight}
+                            iconSize="24"
+                            size="32"
+                            onClick={() => navigate(1)}
+                            disabled={!canGoForward}
+                        />
+                        <IconButton
+                            icon={mdiArrowUp}
+                            iconSize="18"
+                            size="32"
+                            className="ml-2"
+                            onClick={backDirectory}
+                            disabled={!breadcrumbs.length}
+                        />
                     </div>
-                    <div className="fm-breadcrumbs">
-                        <div className="fs-breadcrumb" onClick={() => { setDirectoryId(''); }}>
-                            <Icon className="cloud" icon={mdiFolder} />
-                            <Icon icon={mdiChevronRight} />
+                    <div className="flex flex-row flex-nowrap flex-auto mx-2 px-1 bg-secondary-100 rounded-sm">
+                        <div
+                            className="flex items-center"
+                            onClick={() => {
+                                setDirectoryId('');
+                            }}
+                        >
+                            <IconButton icon={mdiFolder} iconSize="18" size="32" />
+                            <IconButton icon={mdiChevronRight} size="18" />
                         </div>
 
-                        {breadcrumbs.map((breadcrumb: any) => {
+                        {breadcrumbs.map((breadcrumb, i) => {
                             return (
-                                <div className="fs-breadcrumb" key={breadcrumb.id} onClick={() => setDirectoryId(breadcrumb.id)}>
-                                    <span>{breadcrumb.name}</span>
-                                    <Icon icon={mdiChevronRight} />
+                                <div
+                                    className="flex items-center"
+                                    key={breadcrumb.id}
+                                    onClick={() => setDirectoryId(breadcrumb.id)}
+                                >
+                                    <span className="px-2 py-1 cursor-pointer hover:text-primary-500">
+                                        {breadcrumb.name}
+                                    </span>
+                                    {breadcrumbs.length !== i + 1 && <IconButton icon={mdiChevronRight} size="18" />}
                                 </div>
                             );
                         })}
 
-                        <Icon icon={mdiRefresh} className="refresh" />
+                        <IconButton icon={mdiRefresh} iconSize="20" size="32" className="ml-auto" />
                     </div>
-                    <SearchBar value={searchQuery} onChange={(value) => setSearchQuery(value)} />
+                    <SearchBar ref={searchBarRef} value={searchQuery} onChange={(value) => setSearchQuery(value)} />
                 </div>
             ) : (
                 <FSAppBar
@@ -379,13 +417,14 @@ const FileSystem = () => {
                 />
             )}
 
-            <div className="fs-main">
+            <div
+                className={`${
+                    isMobile ? 'pt-14' : 'pt-12'
+                }${bottomPadding} overflow-hidden relative flex flex-auto inset-0`}
+            >
+                {!isMobile && <Sidenav breadcrumbs={breadcrumbs} folders={folders} setDirectoryId={setDirectoryId} />}
 
-                {!isMobile && (
-                    <FSSidenav breadcrumbs={breadcrumbs} folders={folders} setDirectoryId={setDirectoryId} />
-                )}
-
-                <FSItemList
+                <ItemList
                     files={filteredDirectoryFiles}
                     fileRefs={fileRefs}
                     fetching={fetching}
@@ -395,56 +434,62 @@ const FileSystem = () => {
                     setViewerMedia={setViewerMedia}
                     setFocusedListItem={setFocusedListItem}
                 />
-
             </div>
 
-            {!isMobile && (
-                <FSBottomBar list={listEnabled} setList={setListEnabled} />
-            )}
+            {!isMobile && <BottomBar />}
 
             {/* TODO: Make selected files counter always show on desktop*/}
             {/* {(selectedFiles.length > 0) && (
-                    <div className="fs-selected-files">{`${selectedFiles.length} / ${directoryFiles.length} items selected`}</div>
-                )} */}
+                <div className="fs-selected-files">{`${selectedFiles.length} / ${directoryFiles.length} items selected`}</div>
+            )} */}
 
             {settingsOpen && (
-                <div className="fs-settings-bg" onClick={() => setSettingsOpen(false)}>
-                    <div className="fs-settings" onClick={(e) => e.stopPropagation()}>
-                        <div className="title">
+                <div
+                    className="flex flex-col flex-nowrap justify-end absolute inset-0 z-30 bg-secondary-900 bg-opacity-20"
+                    onClick={() => setSettingsOpen(false)}
+                >
+                    <div className="mt-auto bg-white rounded-t-lg" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-row flex-nowrap justify-between p-4 border-b border-secondary-200">
                             <span>Settings</span>
                             <Icon icon={mdiClose} onClick={() => setSettingsOpen(false)} />
                         </div>
-                        <div className="settings">
-                            <div className="setting">
-                                <span>Dark Mode</span>
-                                <Switch checked={darkMode} onChange={setDarkMode} />
+                        <div className="p-4">
+                            <div className="flex flex-row flex-nowrap items-center mb-4">
+                                <span className="flex-auto">Dark Mode</span>
+                                <Switch checked={settings.darkMode} onChange={handleDarkModeChange} />
                             </div>
-                            <div className="setting">
-                                <span>Flatten single item folders</span>
+                            <div className="flex flex-row flex-nowrap items-center mb-4">
+                                <span className="flex-auto">Flatten single item folders</span>
                                 <Switch checked={flattenDepth > 0} onChange={changeFlattenDepth} />
                             </div>
 
-                            <div className="settings-title">Display</div>
-                            <RadioGroup items={[{
-                                name: 'Grid',
-                                value: false
-                            }, {
-                                name: 'List',
-                                value: true
-                            }]} value={listEnabled} onChange={setListEnabled} />
-
-                            <div className="settings-title">Grid Options</div>
-                            <RadioGroup items={uiSizes} value={uiSize} onChange={handleUiSizeChange} />
+                            <div className="text-base leading-4 font-bold">Display</div>
+                            <RadioGroup
+                                items={[
+                                    {
+                                        name: 'Grid',
+                                        value: 'grid',
+                                    },
+                                    {
+                                        name: 'Details',
+                                        value: 'details',
+                                    },
+                                ]}
+                                value={settings.viewMode}
+                                onChange={handleViewModeChange}
+                            />
+                            {settings.viewMode === 'grid' && (
+                                <>
+                                    <div className="text-base leading-4 font-bold">Grid Size</div>
+                                    <RadioGroup items={uiSizes} value={settings.uiSize} onChange={handleUiSizeChange} />
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
             )}
 
-            {viewerMedia && (
-                <FSMediaViewer viewerMedia={viewerMedia} setViewerMedia={setViewerMedia} />
-            )}
+            {!!viewerMedia && <MediaViewer viewerMedia={viewerMedia} setViewerMedia={setViewerMedia} />}
         </div>
     );
 };
-
-export { FileSystem };

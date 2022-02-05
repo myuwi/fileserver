@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useEffect, useState, useRef } from 'react';
 
-const useMouseMoving = (nodeRef: React.MutableRefObject<HTMLElement | null>, delay = 1000) => {
+export const useMouseMoving = (nodeRef: React.MutableRefObject<HTMLElement | null>, delay = 1000) => {
     const [mouseMoving, setMouseMoving] = useState(false);
 
     const mouseMoveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,5 +54,3 @@ const useMouseMoving = (nodeRef: React.MutableRefObject<HTMLElement | null>, del
 
     return mouseMoving;
 };
-
-export { useMouseMoving };

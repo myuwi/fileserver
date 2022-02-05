@@ -13,7 +13,8 @@ import {
     isVideoFile,
     fileInfo,
     mapDirectory,
-    DIRECTORIES
+    DIRECTORIES,
+    getDirFiles,
 } from '../functions';
 
 import { isNumeric } from '../util';
@@ -21,14 +22,13 @@ import { isNumeric } from '../util';
 export const directory = async (req: Request, res: Response) => {
     // const reqDir = req.query.dir;
     const reqDir = req.params.id;
-    const flattenDepth = req.query.flatten;
 
     let pathInfo;
     try {
         pathInfo = await resolvePath(typeof reqDir === 'string' ? reqDir : undefined);
     } catch (err) {
         return res.status(404).json({
-            message: 'Invalid path'
+            message: 'Invalid path',
         });
     }
 
@@ -37,29 +37,23 @@ export const directory = async (req: Request, res: Response) => {
     if (dir === 'ROOT') {
         const files = await Promise.all(
             DIRECTORIES.map(async (dirObj: any) => {
-                const pathToDir = `${dirObj.drive}:/${dirObj.folder}`;
+                const pathToDir = `${dirObj.base}${dirObj.folder}`;
                 return await fileInfo(pathToDir);
             })
         );
 
         return res.status(200).json({
             breadcrumbs,
-            files: files
+            files: files,
         });
     }
 
-    const filesInDir = await fsPromises.readdir(dir);
-
-    const flatten = !!flattenDepth && typeof flattenDepth === 'string' && isNumeric(flattenDepth);
-
-    // @ts-ignore
-    const files = flatten ? await mapDirectory(dir, filesInDir, parseInt(flattenDepth)) : await mapDirectory(dir, filesInDir);
-    // console.log(files)
+    const files = await getDirFiles(dir);
 
     return res.status(200).json({
         // directory: dir.replace('\\', '/'),
         breadcrumbs,
-        files: files
+        files: files,
     });
 };
 
@@ -68,13 +62,13 @@ export const folders = async (req: Request, res: Response) => {
 
     const files = await Promise.all(
         DIRECTORIES.map(async (dirObj: any) => {
-            const pathToDir = `${dirObj.drive}:/${dirObj.folder}`;
+            const pathToDir = `${dirObj.base}${dirObj.folder}`;
 
             const obj = {
                 name: dirObj.folder,
                 id: await getIdByUrl(pathToDir),
                 // type: isDirectory ? 'folder' : 'file',
-                folders: await mapFolders(pathToDir)
+                folders: await mapFolders(pathToDir),
             };
 
             return obj;
@@ -87,7 +81,6 @@ export const folders = async (req: Request, res: Response) => {
 export const file = async (req: Request, res: Response) => {
     // const fileId = req.query.d
     const fileId = req.params.id;
-
 
     // const acceptEncoding = req.headers['accept-encoding'];
     // console.log(acceptEncoding)
@@ -102,7 +95,6 @@ export const file = async (req: Request, res: Response) => {
     }
 
     if (isAudioFile(filePath) || isVideoFile(filePath)) {
-
         try {
             const stat = await fsPromises.lstat(filePath);
 
@@ -117,7 +109,7 @@ export const file = async (req: Request, res: Response) => {
                 const start = parseInt(parts[0], 10);
                 const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 
-                const contentLength = (end - start) + 1;
+                const contentLength = end - start + 1;
 
                 const stream = fs.createReadStream(filePath, { start, end });
 
@@ -131,7 +123,6 @@ export const file = async (req: Request, res: Response) => {
                 res.writeHead(206, head);
 
                 return stream.pipe(res);
-
             } else {
                 const head = {
                     'Content-Length': fileSize,
@@ -144,7 +135,7 @@ export const file = async (req: Request, res: Response) => {
 
                 return stream.pipe(res);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.log(err);
             if (err !== null && err.code === 'ENOENT') {
                 return res.sendStatus(404);
