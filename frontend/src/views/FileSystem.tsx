@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 
-import Axios from 'axios';
+import axios from 'axios';
 
 import { FileOrFolder, ViewerMedia } from '../types';
 
@@ -29,16 +29,18 @@ import { collator } from '../Utils';
 
 import { BottomBar } from '../components/BottomBar';
 import { UiSize, useSettings, ViewMode } from '../hooks/useSettings';
+import { File } from '@backend-types';
 
 // TODO: Split stuff to separate components
 // TODO: Context menu
-// TODO: Settings
+// TODO: Rework Settings
 // TODO: Change document title based on Media
+// TODO: Toast notifications
 
 export const FileSystem = () => {
     const isMobile = useMobile();
 
-    // TODO: Convert to a hook
+    // TODO: Convert to a custom hook
     const [folders, setFolders] = useState(null);
     const [directoryFiles, setDirectoryFiles] = useState<FileOrFolder[]>([]);
     const [fetching, setFetching] = useState<boolean>(true);
@@ -84,7 +86,7 @@ export const FileSystem = () => {
     const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [viewerMedia, setViewerMedia] = useState<ViewerMedia | null>(null);
+    const [viewerMedia, setViewerMedia] = useState<File | null>(null);
 
     const navigate = useNavigate();
 
@@ -119,8 +121,8 @@ export const FileSystem = () => {
     }, [viewerMedia]);
 
     useEffect(() => {
-        if (viewerMedia && viewerMedia.data.name) {
-            document.title = `${viewerMedia.data.name} - File Server`;
+        if (viewerMedia && viewerMedia.name) {
+            document.title = `${viewerMedia.name} - File Server`;
         } else {
             document.title = 'File Server';
         }
@@ -128,20 +130,13 @@ export const FileSystem = () => {
 
     const { canGoBack, canGoForward } = useCustomHistory();
 
-    const setDirectoryId = (id: string) => {
-        // console.log(id)
+    const setDirectoryId = (id: string | null) => {
+        // console.log(id);
         if (!id) {
-            return navigate('');
+            return navigate('/');
         }
 
         navigate(`/${id}`);
-    };
-
-    const fetchFolders = async () => {
-        const folders = await Axios.get('/api/folders').then((res) => res.data);
-        LOGGER.debug(folders);
-
-        setFolders(folders.sort((a: any, b: any) => collator.compare(a.name, b.name)));
     };
 
     const fetchDirectory = async () => {
@@ -160,7 +155,7 @@ export const FileSystem = () => {
 
         // console.log(url)
         try {
-            const dir = await Axios.get(url).then((res) => res.data);
+            const dir = await axios.get(url).then((res) => res.data);
 
             LOGGER.debug(dir);
 
@@ -187,7 +182,7 @@ export const FileSystem = () => {
         if (breadcrumbs.length <= 0) return;
 
         if (breadcrumbs.length <= 1) {
-            return setDirectoryId('');
+            return setDirectoryId(null);
         }
 
         // console.log(breadcrumbs[breadcrumbs.length - 2].id)
@@ -226,10 +221,10 @@ export const FileSystem = () => {
                 return true;
             })
             .sort((a: FileOrFolder, b: FileOrFolder) => {
-                if (a.type === 'FOLDER' && b.type === 'FILE') {
+                if (a.directory && !b.directory) {
                     return -1;
                 }
-                if (a.type === 'FILE' && b.type === 'FOLDER') {
+                if (!a.directory && b.directory) {
                     return 1;
                 }
 
@@ -314,7 +309,6 @@ export const FileSystem = () => {
     }, [breadcrumbs, focusedListItem, filteredDirectoryFiles, viewerMedia]);
 
     useEffect(() => {
-        if (!isMobile) fetchFolders();
         fetchDirectory();
         setSearchQuery('');
         setSelectedFiles([]);
@@ -379,7 +373,7 @@ export const FileSystem = () => {
                         <div
                             className="flex items-center"
                             onClick={() => {
-                                setDirectoryId('');
+                                setDirectoryId(null);
                             }}
                         >
                             <IconButton icon={mdiFolder} iconSize="18" size="32" />

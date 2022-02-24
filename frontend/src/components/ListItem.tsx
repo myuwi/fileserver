@@ -58,17 +58,17 @@ export const ListItem = React.forwardRef(
                     aria-selected={selected}
                 >
                     <div className={'text-primary-500 relative rounded w-full pt-full'}>
-                        {item.type === 'FILE' && item.hasThumb ? (
+                        {!item.directory && item.hasThumb ? (
                             <img
                                 className="h-full w-full absolute bottom-0 left-1/2 object-contain object-bottom transform -translate-x-1/2 pointer-events-none"
                                 src={`http://192.168.1.106:3000/api/thumb/${item.id}.jpg`}
                                 alt="thumbnail"
                             />
                         ) : (
-                            <Icon icon={item.type === 'FILE' ? fileTypeIcon : mdiFolder} size="2/3" position="center" />
+                            <Icon icon={!item.directory ? fileTypeIcon : mdiFolder} size="2/3" position="center" />
                         )}
 
-                        {item.type === 'FILE' && (
+                        {!item.directory && (
                             <div
                                 className={
                                     'absolute left-1 bottom-1 rounded-sm overflow-hidden text-white uppercase py-0.5 px-1 text-sm bg-primary-500 shadow'
@@ -93,14 +93,16 @@ export const ListItem = React.forwardRef(
                             {item.name}
                         </span>
                         <span className="text-xs text-secondary-700">
-                            {item.type === 'FOLDER' ? `${item.fileCount} files` : humanFileSize}
+                            {item.directory
+                                ? `${item.fileCount.total} ${item.fileCount.total === 1 ? 'file' : 'files'}`
+                                : humanFileSize}
                         </span>
                     </div>
                 </div>
 
                 {contextMenu.open && (
                     <ContextMenu position={contextMenu.pos} onHide={() => contextMenu.setOpen(false)}>
-                        {item.type === 'FOLDER' ? (
+                        {item.directory ? (
                             <ContextMenu.Item
                                 icon={mdiFolderOpenOutline}
                                 text="Open"

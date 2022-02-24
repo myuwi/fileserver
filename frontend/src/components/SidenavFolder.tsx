@@ -5,7 +5,7 @@ import { mdiMenuRight, mdiMenuDown, mdiFolder } from '@mdi/js';
 import { collator } from '../Utils';
 
 type Props = {
-    breadcrumbs?: any;
+    breadcrumbs: any[];
     folder: any;
     folderDepth?: number;
     setDirectoryId: (id: string) => void;
@@ -21,19 +21,12 @@ export const SidenavFolder = ({ breadcrumbs, folder, folderDepth = 0, setDirecto
     const [expanded, setExpanded] = useState<boolean>(false);
 
     const current =
-        breadcrumbs &&
-        breadcrumbs.length > 0 &&
-        breadcrumbs[folderDepth] &&
-        breadcrumbs[breadcrumbs.length - 1].id === folder.id;
+        breadcrumbs.length > 0 && breadcrumbs[folderDepth] && breadcrumbs[breadcrumbs.length - 1].id === folder.id;
     // if (current) console.log(folder.name)
 
     useEffect(() => {
         if (folder.folders.length <= 0) return;
-        const open =
-            breadcrumbs &&
-            breadcrumbs.length > 0 &&
-            breadcrumbs[folderDepth] &&
-            breadcrumbs[folderDepth].id === folder.id;
+        const open = breadcrumbs.length > 0 && breadcrumbs[folderDepth] && breadcrumbs[folderDepth].id === folder.id;
         if (open) setExpanded(true);
     }, [breadcrumbs]);
 

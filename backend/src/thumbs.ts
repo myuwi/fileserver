@@ -1,4 +1,4 @@
-import { promises as fsPromises } from 'graceful-fs';
+import { promises as fs } from 'graceful-fs';
 import * as ffmpeg from 'fluent-ffmpeg';
 import * as mm from 'music-metadata';
 import * as sharp from 'sharp';
@@ -22,12 +22,12 @@ export const THUMB_DIR = path.join(__rootdir__, '..', 'thumbs');
 /**
  * Returns the dimensions of a video file.
  */
-const getDimentions = (filePath: string) => {
-    // console.log('Getting Dimentions from:', filePath)
+const getDimensions = (filePath: string) => {
+    // console.log('Getting Dimensions from:', filePath)
     return new Promise<Dimensions>((resolve, reject) => {
         ffmpeg.ffprobe(filePath, (err, metadata) => {
             if (err) {
-                // console.log('Error occured while getting dimensions of:', filePath)
+                // console.log('Error occurred while getting dimensions of:', filePath)
                 return reject(err);
             }
 
@@ -53,7 +53,7 @@ export const getFileThumbnail = async (id: string) => {
     const thumbName = `${id}${THUMB_EXTENSION}`;
 
     try {
-        await fsPromises.access(path.join(THUMB_DIR, thumbName));
+        await fs.access(path.join(THUMB_DIR, thumbName));
         return true;
     } catch (err) {
         return false;
@@ -95,7 +95,7 @@ export const generateVideoThumbnail = async (filePath: string, fileId: string) =
     const thumbName = `${fileId}${THUMB_EXTENSION}`;
 
     try {
-        const { width, height } = await getDimentions(filePath);
+        const { width, height } = await getDimensions(filePath);
 
         console.log(`Generating thumbnail: ${thumbName}`);
 

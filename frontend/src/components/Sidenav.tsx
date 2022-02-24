@@ -47,7 +47,10 @@ export const Sidenav = ({ breadcrumbs, folders, setDirectoryId }: Props) => {
                     <Icon icon={mdiSortVariant} className="ml-auto" size="18" />
                 </div>
                 <div className="flex flex-col flex-nowrap flex-auto overflow-auto">
-                    {folders &&
+                    <div className="select-none text-secondary-600 flex flex-1 flex-row justify-center py-4">
+                        Currently borked
+                    </div>
+                    {/* {folders?.length ? (
                         folders.map((folder: any, i: number) => {
                             // Breadcrumbs + openByDefault prop
                             return (
@@ -58,7 +61,12 @@ export const Sidenav = ({ breadcrumbs, folders, setDirectoryId }: Props) => {
                                     setDirectoryId={setDirectoryId}
                                 />
                             );
-                        })}
+                        })
+                    ) : (
+                        <div className="select-none text-secondary-600 flex flex-1 flex-row justify-center py-4">
+                            No folders found...
+                        </div>
+                    )} */}
                 </div>
             </div>
             <div ref={dragRef} className="absolute inset-y-0 right-0 bg-transparent w-1 cursor-ew-resize"></div>

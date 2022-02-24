@@ -3,25 +3,26 @@ import { useEffect, useState, useRef } from 'react';
 export const useDrag = (nodeRef: React.MutableRefObject<HTMLElement | null>) => {
     const [dragging, setDragging] = useState(false);
 
-    const [coords, setCoords] = useState<{ x: number, y: number } | null>(null);
+    const [coords, setCoords] = useState<{ x: number; y: number } | null>(null);
 
     const events = {
         mouse: {
             start: 'mousedown',
             move: 'mousemove',
-            end: 'mouseup'
+            end: 'mouseup',
         },
         touch: {
             start: 'touchstart',
             move: 'touchmove',
-            end: 'touchend'
-        }
+            end: 'touchend',
+        },
     };
 
     const inputType = useRef<'mouse' | 'touch'>('mouse');
 
     const handleDragStart = (e: MouseEvent | TouchEvent) => {
-        if (e.type === 'touchstart' && e.cancelable) {
+        // if (e.type === 'touchstart' && e.cancelable) {
+        if (e.cancelable) {
             e.preventDefault();
         }
 
@@ -36,7 +37,7 @@ export const useDrag = (nodeRef: React.MutableRefObject<HTMLElement | null>) => 
 
         setCoords({
             x: (e as MouseEvent).clientX || (e as TouchEvent).touches[0].clientX,
-            y: (e as MouseEvent).clientY || (e as TouchEvent).touches[0].clientY
+            y: (e as MouseEvent).clientY || (e as TouchEvent).touches[0].clientY,
         });
     };
 

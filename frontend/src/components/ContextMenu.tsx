@@ -6,16 +6,11 @@ import { Icon } from './Icon';
 type ContextMenuProps = {
     children: ReactNode;
     className?: string;
-    position: { x: number, y: number };
+    position: { x: number; y: number };
     onHide: () => void;
-}
+};
 
-export const ContextMenu = ({
-    children,
-    className = '',
-    position,
-    onHide,
-}: ContextMenuProps) => {
+export const ContextMenu = ({ children, className = '', position, onHide }: ContextMenuProps) => {
     const ref = useRef<HTMLDivElement>(null);
 
     const closeMenu = (e: MouseEvent) => {
@@ -51,15 +46,10 @@ type ContextMenuItemProps = React.DetailedHTMLProps<
 > & {
     text: string;
     icon?: string;
-}
+};
 
-const ContextMenuItem = ({
-    icon,
-    text,
-    onClick,
-    ...rest
-}: ContextMenuItemProps) => {
-
+// TODO: Fix this stupid props validation error
+const ContextMenuItem = ({ icon, text, onClick, ...rest }: ContextMenuItemProps) => {
     const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
         onClick && onClick(e);
     };
@@ -70,11 +60,7 @@ const ContextMenuItem = ({
             className="flex flex-row flex-nowrap flex-1 items-center transition-colors duration-50 ease-in-out bg-white hover:bg-secondary-500 hover:bg-opacity-5 text-secondary-700 hover:text-secondary-800 px-4 py-1.5 outline-none focus:outline-none mb-1 last:mb-0"
             {...rest}
         >
-            {!!icon && <Icon
-                icon={icon}
-                size="20"
-                className="mr-2"
-            />}
+            {!!icon && <Icon icon={icon} size="20" className="mr-2" />}
             <span>{text}</span>
         </button>
     );

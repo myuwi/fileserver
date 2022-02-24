@@ -6,7 +6,7 @@ export type Dimensions = {
 export type File = {
     name: string;
     id: string;
-    type: 'FILE';
+    directory: false;
     size: number;
     hasThumb?: boolean;
     metadata?: any;
@@ -16,8 +16,12 @@ export type File = {
 export type Folder = {
     name: string;
     id: string;
-    type: 'FOLDER';
-    fileCount: number;
+    directory: true;
+    fileCount: {
+        file: number;
+        folder: number;
+        total: number;
+    };
 };
 
 export type FileOrFolder = File | Folder;
@@ -32,4 +36,18 @@ export type DbEntry = {
     id: string;
     parent?: string;
     url: string;
+};
+
+export type TreeFolder = {
+    name: string;
+    id: string;
+    childCount: number;
+    children?: TreeFolder[];
+};
+
+export type BreadCrumb = {
+    id: string;
+    parent: string | null;
+    url: string;
+    relative_depth: number;
 };

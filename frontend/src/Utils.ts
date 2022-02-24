@@ -15,7 +15,7 @@ export const copyToClipboard = (str: string) => {
 };
 
 export const getTypeOf = (item: FileOrFolder) => {
-    if (item.type === 'FOLDER') return 'Folder';
+    if (item.directory) return 'Folder';
 
     const extension = item.name.split('.').pop()?.trim().toLowerCase();
 

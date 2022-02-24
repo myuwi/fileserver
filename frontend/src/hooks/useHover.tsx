@@ -22,5 +22,5 @@ export const useHover = <T extends HTMLElement>() => {
         }
     }, []);
 
-    return ([ref, value] as [React.RefObject<T>, boolean]);
+    return [ref, value] as [React.RefObject<T>, boolean];
 };

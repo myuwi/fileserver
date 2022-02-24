@@ -2,7 +2,19 @@ import * as React from 'react';
 import { useEffect, useMemo, useState, useRef } from 'react';
 
 import { Icon } from './Icon';
-import { mdiPause, mdiPlay, mdiFullscreen, mdiFullscreenExit, mdiFastForward10, mdiRewind10, mdiArrowLeft, mdiDotsVertical, mdiLinkVariant, mdiDownload, mdiVolumeHigh, mdiPictureInPictureBottomRight } from '@mdi/js';
+import {
+    mdiPause,
+    mdiPlay,
+    mdiFullscreen,
+    mdiFullscreenExit,
+    mdiFastForward10,
+    mdiRewind10,
+    mdiArrowLeft,
+    mdiDotsVertical,
+    mdiLinkVariant,
+    mdiDownload,
+    mdiPlayBoxMultiple,
+} from '@mdi/js';
 
 import { useDrag } from '../hooks/useDrag';
 
@@ -12,39 +24,39 @@ import { Spinner } from './Spinner';
 import { IconButton } from './IconButton';
 import { LOGGER } from '../LOGGER';
 import { copyToClipboard } from '../Utils';
-import { ViewerMedia } from '../types';
 import { useHover } from '../hooks/useHover';
+import { File } from '@backend-types';
+import { useMouseMoving } from '../hooks/useMouseMoving';
 
 type Props = {
-    media: ViewerMedia;
+    media: File;
     onError?: (err: any) => void;
     onImmersedChange?: (immersed: boolean) => void;
-    mouseMoving?: boolean;
     toggleFullScreen: () => void;
+    openQueue?: () => void;
     fullscreen?: boolean;
     close: () => void;
-}
-
+};
 
 export const VideoPlayer = ({
     media,
     onError,
     onImmersedChange,
-    mouseMoving,
     toggleFullScreen,
+    openQueue,
     fullscreen = false,
-    close
+    close,
 }: Props) => {
     // const document: any = window.document
 
-    const src = 'http://192.168.1.106:3000/api/file/' + media.data.id;
-
+    const src = 'http://192.168.1.106:3000/api/file/' + media.id;
 
     const [error, setError] = useState(false);
 
     // node refs
     const videoRef = useRef<HTMLVideoElement>(null);
     const progressRef = useRef<HTMLDivElement>(null);
+    const rootRef = useRef<HTMLDivElement>(null);
 
     // const dragTargetRef = useRef(null)
 
@@ -65,8 +77,7 @@ export const VideoPlayer = ({
     const [videoCurrentTime, setVideoCurrentTime] = useState<string | null>(null);
     const [videoDuration, setVideoDuration] = useState<string | null>(null);
 
-    // const [mouseMoving, setMouseMoving] = useState(false)
-    // const mouseMoving = useMouseMoving(videoPlayerRef)
+    const mouseMoving = useMouseMoving(rootRef);
 
     const [seeking, setSeeking] = useState(0);
 
@@ -163,12 +174,7 @@ export const VideoPlayer = ({
         video.currentTime = time;
     }, [coords]);
 
-    const handleDoubleClick = (
-        clickCallback: () => void,
-        dblClickCallback: () => void,
-        delay = 200
-    ) => {
-
+    const handleDoubleClick = (clickCallback: () => void, dblClickCallback: () => void, delay = 200) => {
         // console.log('click')
         if (clickTimeout.current !== null) {
             if (clickTimeout.current) {
@@ -223,7 +229,7 @@ export const VideoPlayer = ({
         }
     };
 
-    const playbackStateChanged = (e: Event) => {
+    const handlePlaybackStateChanged = (e: Event) => {
         // console.log(e)
         // console.log('playback state changed')
 
@@ -254,7 +260,7 @@ export const VideoPlayer = ({
         // LEFT: 0
         // CENTER: 1
         // RIGHT: 2
-        const area = clickX < (playerWidth * clickArea) ? 0 : clickX > (playerWidth * (1 - clickArea)) ? 2 : 1;
+        const area = clickX < playerWidth * clickArea ? 0 : clickX > playerWidth * (1 - clickArea) ? 2 : 1;
 
         let seekTime;
         switch (area) {
@@ -308,7 +314,6 @@ export const VideoPlayer = ({
         seekTimeout.current = setTimeout(() => {
             if (seekTimeout.current) {
                 clearTimeout(seekTimeout.current);
-
             }
 
             seekTimeout.current = null;
@@ -323,7 +328,6 @@ export const VideoPlayer = ({
     const download = () => {
         window.open(src + '/download');
     };
-
 
     const clearTimeouts = () => {
         if (clickTimeout.current) {
@@ -356,21 +360,21 @@ export const VideoPlayer = ({
         if (!video) return;
 
         video.addEventListener('timeupdate', handleProgress);
-        video.addEventListener('play', playbackStateChanged);
-        video.addEventListener('pause', playbackStateChanged);
+        video.addEventListener('play', handlePlaybackStateChanged);
+        video.addEventListener('pause', handlePlaybackStateChanged);
 
         video.addEventListener('error', handleError);
 
         video.addEventListener('loadedmetadata', handleProgress);
 
-        (video as any).disableRemotePlayback = true;
+        video.disableRemotePlayback = true;
 
         document.addEventListener('keydown', handleKeyDown);
 
         return () => {
             video.removeEventListener('timeupdate', handleProgress);
-            video.removeEventListener('play', playbackStateChanged);
-            video.removeEventListener('pause', playbackStateChanged);
+            video.removeEventListener('play', handlePlaybackStateChanged);
+            video.removeEventListener('pause', handlePlaybackStateChanged);
 
             video.removeEventListener('error', handleError);
 
@@ -385,7 +389,6 @@ export const VideoPlayer = ({
     }, []);
 
     const refreshMobileControlsTimeout = (condition = true) => {
-
         if (mobileShowControlsTimeout.current) {
             clearTimeout(mobileShowControlsTimeout.current);
             mobileShowControlsTimeout.current = null;
@@ -451,60 +454,88 @@ export const VideoPlayer = ({
         }
 
         return true;
-    }, [dragging, isMobile, mobileShowControls, mouseMoving, topControlsHovered, bottomControlsHovered, videoLoaded, playing]);
+    }, [
+        dragging,
+        isMobile,
+        mobileShowControls,
+        mouseMoving,
+        topControlsHovered,
+        bottomControlsHovered,
+        videoLoaded,
+        playing,
+    ]);
 
     useEffect(() => {
         // console.log('isImmersed', isImmersed)
         if (onImmersedChange) onImmersedChange(isImmersed);
     }, [isImmersed]);
 
-    const returnIf = (condition: boolean, className: string) => condition ? className : '';
+    const ifTrue = (condition: boolean, className: string) => (condition ? className : '');
 
     return (
         <>
-            {(!videoLoaded && !error) && (
-                <Spinner className="mt-16" />
-            )}
+            {!videoLoaded && !error && <Spinner className="mt-16" />}
 
-            <div className={`relative overflow-hidden h-full w-full max-h-full max-w-full flex-none${returnIf((!videoLoaded && !error), ' hidden')}${returnIf(isImmersed, ' cursor-none')}`}>
+            <div
+                className={`relative overflow-hidden h-full w-full max-h-full max-w-full flex-1${ifTrue(
+                    !videoLoaded && !error,
+                    ' hidden'
+                )}${ifTrue(isImmersed, ' cursor-none')}`}
+                ref={rootRef}
+            >
                 <video
                     ref={videoRef}
                     src={src}
-                    onClick={isMobile ?
-                        mobileHandleClicks :
-                        () => handleDoubleClick(togglePlaying, toggleFullScreen)
-                    }
+                    onClick={isMobile ? mobileHandleClicks : () => handleDoubleClick(togglePlaying, toggleFullScreen)}
                     className="block h-full w-full max-h-screen max-w-full bg-black"
                 />
 
-                {media.type === 'audio' && media.data.hasThumb && (
+                {media.contentType === 'audio' && media.hasThumb && (
                     <img
                         className="absolute inset-0 h-full w-full max-h-screen max-w-full pointer-events-none object-contain object-center"
-                        src={`http://192.168.1.106:3000/api/thumb/${media.data.id}.jpg`}
-                        alt='Audio thumbnail'
+                        src={`http://192.168.1.106:3000/api/thumb/${media.id}.jpg`}
+                        alt="Audio thumbnail"
                     />
                 )}
 
                 {isMobile && (
                     <div className="absolute inset-0 pointer-events-none grid grid-cols-half z-30">
-                        <div className={`text-white place-self-center bg-black bg-opacity-25 p-2 rounded-full leading-none${returnIf(seeking >= 0, ' opacity-0')}`}>
+                        <div
+                            className={`text-white place-self-center bg-black bg-opacity-25 p-2 rounded-full leading-none${ifTrue(
+                                seeking >= 0,
+                                ' opacity-0'
+                            )}`}
+                        >
                             <Icon icon={mdiRewind10} />
                         </div>
-                        <div className={`text-white place-self-center bg-black bg-opacity-25 p-2 rounded-full leading-none${returnIf(seeking <= 0, ' opacity-0')}`}>
+                        <div
+                            className={`text-white place-self-center bg-black bg-opacity-25 p-2 rounded-full leading-none${ifTrue(
+                                seeking <= 0,
+                                ' opacity-0'
+                            )}`}
+                        >
                             <Icon icon={mdiFastForward10} />
                         </div>
                     </div>
                 )}
 
                 <div
-                    className={`absolute inset-0 pointer-events-none transition-opacity duration-200 ease-in-out${returnIf(isImmersed, ' opacity-0')}`}
+                    className={`absolute inset-0 pointer-events-none transition-opacity duration-200 ease-in-out${ifTrue(
+                        isImmersed,
+                        ' opacity-0'
+                    )}${ifTrue(isMobile, ' bg-black bg-opacity-60')}`}
                     ref={topRef}
                 >
                     {!isMobile && (
                         <div className="bg-gradient-to-b from-black bg-opacity-50 h-40 absolute top-0 inset-x-0 pointer-events-none z-20"></div>
                     )}
 
-                    <div className={`flex flex-row flex-nowrap flex-auto top-0 inset-x-0 absolute p-2 z-30 items-center text-white${returnIf(!isImmersed, ' pointer-events-auto')}`}>
+                    <div
+                        className={`flex flex-row flex-nowrap flex-auto top-0 inset-x-0 absolute p-2 z-30 items-center text-white${ifTrue(
+                            !isImmersed,
+                            ' pointer-events-auto'
+                        )}`}
+                    >
                         <IconButton
                             icon={mdiArrowLeft}
                             iconSize="24"
@@ -513,9 +544,20 @@ export const VideoPlayer = ({
                             onClick={close}
                         />
 
-                        <span className="flex-initial ml-3 overflow-hidden overflow-ellipsis break-words whitespace-nowrap">{media.data.name}</span>
+                        <span className="flex-initial ml-3 overflow-hidden overflow-ellipsis break-words whitespace-nowrap">
+                            {media.name}
+                        </span>
 
                         <div className="flex flex-row flex-nowrap flex-initial ml-auto">
+                            {typeof openQueue === 'function' && (
+                                <IconButton
+                                    icon={mdiPlayBoxMultiple}
+                                    iconSize="24"
+                                    size="48"
+                                    className="transition-opacity duration-200 ease-in-out opacity-60 hover:opacity-100"
+                                    onClick={openQueue}
+                                />
+                            )}
                             <IconButton
                                 icon={mdiDownload}
                                 iconSize="24"
@@ -540,20 +582,21 @@ export const VideoPlayer = ({
                     </div>
 
                     {error && (
-                        <div
-                            className="flex justify-center absolute transform -translate-y-50% top-1/2 inset-x-0 text-white"
-                        >Unable to load media in the web player</div>
+                        <div className="flex justify-center absolute transform -translate-y-50% top-1/2 inset-x-0 text-white">
+                            Unable to load media in the web player
+                        </div>
                     )}
 
                     {!error && (
                         <>
                             {isMobile && (
-                                <div className={`flex justify-center absolute transform -translate-y-1/2 top-1/2 inset-x-0 text-white${returnIf(!isImmersed, ' pointer-events-auto')}`}>
-                                    <IconButton
-                                        icon={playing ? mdiPause : mdiPlay}
-                                        onClick={togglePlaying}
-                                        size="64"
-                                    />
+                                <div
+                                    className={`flex justify-center absolute transform -translate-y-1/2 top-1/2 inset-x-0 text-white${ifTrue(
+                                        !isImmersed,
+                                        ' pointer-events-auto'
+                                    )}`}
+                                >
+                                    <IconButton icon={playing ? mdiPause : mdiPlay} onClick={togglePlaying} size="64" />
                                 </div>
                             )}
 
@@ -562,7 +605,10 @@ export const VideoPlayer = ({
                             )}
 
                             <div
-                                className={`flex flex-row flex-nowrap flex-auto bottom-0 inset-x-0 absolute p-2 z-30 items-center text-white${returnIf(!isImmersed, ' pointer-events-auto')}`}
+                                className={`flex flex-row flex-nowrap flex-auto bottom-0 inset-x-0 absolute p-2 z-30 items-center text-white${ifTrue(
+                                    !isImmersed,
+                                    ' pointer-events-auto'
+                                )}`}
                                 ref={bottomRef}
                             >
                                 {!isMobile && (
@@ -581,26 +627,19 @@ export const VideoPlayer = ({
                                     <span>{videoDuration}</span>
                                 </div>
 
-                                <div className="flex items-center h-12 cursor-pointer w-full relative mx-3" ref={progressRef} onClick={clickProgress}>
+                                <div
+                                    className="flex items-center h-12 cursor-pointer w-full relative mx-3"
+                                    ref={progressRef}
+                                    onClick={clickProgress}
+                                >
                                     <div className="absolute h-0.5 w-full bg-white bg-opacity-30 pointer-events-none"></div>
-                                    <div className="absolute h-0.5 bg-primary-500" style={{ width: `${progressPercent}% ` }}>
+                                    <div
+                                        className="absolute h-0.5 bg-primary-500"
+                                        style={{ width: `${progressPercent}% ` }}
+                                    >
                                         <div className="h-2.5 w-2.5 bg-white absolute top-1/2 -right-1.25 transform -translate-y-1/2 rounded-md"></div>
                                     </div>
                                 </div>
-
-                                {/* <IconButton
-                                    icon={mdiVolumeHigh}
-                                    iconSize="24"
-                                    size="48"
-                                    className="transition-opacity duration-200 ease-in-out opacity-60 hover:opacity-100"
-                                /> */}
-
-                                {/* <IconButton
-                                    icon={mdiPictureInPictureBottomRight}
-                                    iconSize="24"
-                                    size="48"
-                                    className="transition-opacity duration-200 ease-in-out opacity-60 hover:opacity-100"
-                                /> */}
 
                                 <IconButton
                                     icon={fullscreen ? mdiFullscreenExit : mdiFullscreen}

@@ -1,24 +1,16 @@
-import { promises as fsPromises } from 'graceful-fs';
+import { promises as fs } from 'graceful-fs';
 import * as path from 'path';
 
 import * as ffmpeg from 'fluent-ffmpeg';
 
-import { DbEntry, File, FileOrFolder, Folder, VideoMetadata } from './types';
+import { BreadCrumb, DbEntry, File, FileOrFolder, Folder, TreeFolder, VideoMetadata } from './types';
 
 import { db, knex } from './database/db';
 import { __rootdir__ } from './root';
 import { generateAudioThumbnail, generateImageThumbnail, generateVideoThumbnail, getFileThumbnail } from './thumbs';
 import { orderBy } from 'natural-orderby';
-export const DIRECTORIES: { base: string; folder: string }[] = [
-    {
-        base: '/hdd1/',
-        folder: 'Torrent',
-    },
-    {
-        base: '/hdd1/',
-        folder: 'Voice',
-    },
-];
+
+import * as config from '../config.json';
 
 import { EXTENSIONS } from './constants';
 
@@ -119,69 +111,37 @@ export const getUrlById = async (id: string) => {
     return (await db.getById(id))?.url;
 };
 
-export const resolvePath = async (id?: string) => {
-    // Return Root in a scuffed way
-    if (!id) {
-        return {
-            dir: 'ROOT',
-            breadcrumbs: [],
-        };
-    }
+export const getBreadcrumbs = async (id?: string): Promise<BreadCrumb[]> => {
+    if (!id) return [];
 
-    let dir;
-    let selectedPath;
+    // FIXME: Yes, I know there's an SQL injection vulnerability here
+    const files = await knex.raw(
+        `WITH parents (id, parent, url, relative_depth) AS (
+            SELECT id, parent, url, 0
+            FROM files
+            WHERE id = ?
+            UNION ALL
+            SELECT f.id, f.parent, f.url, c.relative_depth - 1
+            FROM files f, parents c
+            WHERE f.id = c.parent
+        )
+        SELECT *
+        FROM parents
+        ORDER by relative_depth ASC;`,
+        id
+    );
 
-    // console.log('pathId', pathId)
+    return files;
+};
 
-    const _path = await getUrlById(id);
-
-    if (!_path) throw new Error();
-
-    for (let i = 0; i < DIRECTORIES.length; i++) {
-        const basePath = `${DIRECTORIES[i].base}${DIRECTORIES[i].folder}`;
-
-        if (_path.startsWith(basePath)) {
-            dir = `${DIRECTORIES[i].base}`;
-            selectedPath = _path.substring(dir.length);
-            break;
-        }
-    }
-
-    if (!dir || !selectedPath) throw new Error();
-
-    const pathSegments = selectedPath.replace(/\\/g, '/').split('/').filter(Boolean);
-    // console.log('pathSegments', pathSegments)
-
-    const folders = [];
-
-    for (let i = 0; i < pathSegments.length; i++) {
-        const files = await fsPromises.readdir(dir);
-
-        if (files.includes(pathSegments[i])) {
-            dir = path.join(dir, pathSegments[i]);
-            // console.log('resolvePath loop dir:', path.join(dir))
-
-            const filePath = dir;
-            const id = await getIdByUrl(filePath);
-            folders.push({
-                id,
-                name: pathSegments[i],
-            });
-        } else {
-            throw new Error();
-        }
-    }
-
-    return {
-        dir: dir.replace(/\\/g, '/'),
-        breadcrumbs: folders,
-    };
+export const getRootDirectoryContents = async () => {
+    return await Promise.all(config.rootDirs.map(async (dir) => await getFileInfo(dir)));
 };
 
 export const mapFolders = async (_path: string): Promise<any[] | null> => {
     if (!_path) return null;
 
-    const directory = await fsPromises.readdir(_path);
+    const directory = await fs.readdir(_path);
 
     // const files = await Promise.all(
     //     directory
@@ -213,7 +173,7 @@ export const mapFolders = async (_path: string): Promise<any[] | null> => {
         const e = directory[i];
 
         const dirPath = path.join(_path, e);
-        const stat = await fsPromises.lstat(dirPath);
+        const stat = await fs.lstat(dirPath);
         if (!stat.isDirectory()) continue;
 
         files.push({
@@ -224,6 +184,73 @@ export const mapFolders = async (_path: string): Promise<any[] | null> => {
     }
 
     return files.filter(Boolean);
+};
+
+export const getFileParents = async (id?: string) => {
+    const files = await getBreadcrumbs(id);
+
+    type FolderData = {
+        parentId: string;
+        folders: Folder[];
+    };
+
+    const generateTree = (elements: FolderData[]) => {
+        if (!elements.length) return [];
+        const element = elements[0];
+
+        const data = element.folders.map((e) => {
+            const data: TreeFolder = {
+                name: e.name,
+                id: e.id,
+                childCount: e.fileCount.folder,
+            };
+
+            if (e.id === elements[1]?.parentId && elements[1].folders.length) {
+                data.children = generateTree(elements.slice(1));
+            }
+
+            return data;
+        });
+
+        return data;
+    };
+
+    const folderData: FolderData[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+        const dir = files[i];
+        const elements = (await getDirFiles(dir.url)).filter((e) => e.directory) as Folder[];
+
+        // console.log(dir.id, elements);
+
+        folderData.push({
+            parentId: dir.id,
+            folders: elements,
+        });
+    }
+
+    const tree = generateTree(folderData);
+
+    // console.log(files);
+
+    // Append folders to root directory
+    const root = ((await getRootDirectoryContents()).filter((e) => e.directory) as Folder[]).map((e) => {
+        const item: TreeFolder = {
+            name: e.name,
+            id: e.id,
+            childCount: e.fileCount.total,
+        };
+
+        if (e.id === files[0]?.id) {
+            item.children = tree;
+        }
+
+        return item;
+    });
+
+    // console.log(JSON.stringify(root, null, 2));
+
+    return root;
 };
 
 export const mapDirectory = async (dirPath: string, filesInDir: any[], flatten?: number): Promise<FileOrFolder[]> => {
@@ -272,7 +299,7 @@ const updateDir = async (dirPath: string) => {
     // TODO: Recursively map folders to db
     if (!curDirDbE) return [];
 
-    const filePaths = (await fsPromises.readdir(dirPath)).map((f) => path.join(dirPath, f).replace(/\\/g, '/'));
+    const filePaths = (await fs.readdir(dirPath)).map((f) => path.join(dirPath, f).replace(/\\/g, '/'));
 
     // console.log('filePaths', filePaths);
 
@@ -309,7 +336,7 @@ const updateDir = async (dirPath: string) => {
     let low = 0;
     while (low < items.length) {
         const high = Math.min(low + CONCURRENT_ITEMS, items.length);
-        const newFiles = await Promise.all(items.slice(low, high).map(async (e) => await fileInfo(e.url)));
+        const newFiles = await Promise.all(items.slice(low, high).map(async (e) => await getFileInfo(e.url)));
 
         files = [...files, ...newFiles];
         low += CONCURRENT_ITEMS;
@@ -320,17 +347,22 @@ const updateDir = async (dirPath: string) => {
     return files;
 };
 
-export const fileInfo = async (dirPath: string, fileName?: string) => {
-    let filePath;
+/**
+ * Get file info
+ * @param filePath Path to the file
+ * @returns File info
+ */
+export const getFileInfo = async (filePath: string) => {
+    const fileName = path.basename(filePath);
 
-    if (!fileName) {
-        filePath = dirPath;
-        fileName = dirPath.split('/').filter(Boolean).pop()!.trim();
-    } else {
-        filePath = path.join(dirPath, fileName);
-    }
+    // if (!fileName) {
+    //     filePath = dirPath;
+    //     fileName = dirPath.split('/').filter(Boolean).pop()!.trim();
+    // } else {
+    //     filePath = path.join(dirPath, fileName);
+    // }
 
-    const stat = await fsPromises.lstat(filePath);
+    const stat = await fs.lstat(filePath);
 
     const isDirectory = stat.isDirectory();
 
@@ -340,7 +372,7 @@ export const fileInfo = async (dirPath: string, fileName?: string) => {
         const item: File = {
             name: fileName,
             id,
-            type: 'FILE',
+            directory: false,
             size: stat.size,
             contentType: getFileType(fileName),
         };
@@ -349,13 +381,13 @@ export const fileInfo = async (dirPath: string, fileName?: string) => {
             try {
                 item.hasThumb = await getFileThumbnail(id);
 
-                if (isVideoFile(filePath)) {
-                    try {
-                        item.metadata = await getVideoMetadata(filePath);
-                    } catch (err) {
-                        console.log(err);
-                    }
-                }
+                // if (isVideoFile(filePath)) {
+                //     try {
+                //         item.metadata = await getVideoMetadata(filePath);
+                //     } catch (err) {
+                //         console.log(err);
+                //     }
+                // }
 
                 // Generate thumbnail
                 if (!item.hasThumb) {
@@ -378,12 +410,26 @@ export const fileInfo = async (dirPath: string, fileName?: string) => {
 
         return item;
     } else {
-        const filesInDirectory = await fsPromises.readdir(filePath);
+        const filesInDirectory = await fs.readdir(filePath);
+        const childData = { file: 0, folder: 0, total: 0 };
+
+        for (let i = 0; i < filesInDirectory.length; i++) {
+            const element = filesInDirectory[i];
+            const stat = await fs.lstat(path.join(filePath, element));
+
+            if (stat.isDirectory()) {
+                childData.folder++;
+            } else {
+                childData.file++;
+            }
+            childData.total++;
+        }
+
         const item: Folder = {
             name: fileName,
             id,
-            type: 'FOLDER',
-            fileCount: filesInDirectory.length,
+            directory: true,
+            fileCount: childData,
         };
 
         return item;

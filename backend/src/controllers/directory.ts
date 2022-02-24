@@ -1,41 +1,40 @@
 import { Request, Response } from 'express';
+import path = require('path');
 
-import { resolvePath, fileInfo, DIRECTORIES, getDirFiles } from '../functions';
+import { getDirFiles, getBreadcrumbs, getRootDirectoryContents } from '../functions';
 
 export const directory = async (req: Request, res: Response) => {
     // const reqDir = req.query.dir;
-    const reqDir = req.params.id;
+    const id = req.params.id;
 
-    let pathInfo;
+    let breadcrumbs;
     try {
-        pathInfo = await resolvePath(typeof reqDir === 'string' ? reqDir : undefined);
+        breadcrumbs = await getBreadcrumbs(id);
+        // pathInfo = await resolvePath(typeof id === 'string' ? id : undefined);
     } catch (err) {
         return res.status(404).json({
             message: 'Invalid path',
         });
     }
 
-    const { dir, breadcrumbs } = pathInfo;
-
-    if (dir === 'ROOT') {
-        const files = await Promise.all(
-            DIRECTORIES.map(async (dirObj: any) => {
-                const pathToDir = `${dirObj.base}${dirObj.folder}`;
-                return await fileInfo(pathToDir);
-            })
-        );
+    if (!breadcrumbs.length) {
+        const files = await getRootDirectoryContents();
 
         return res.status(200).json({
-            breadcrumbs,
+            breadcrumbs: [],
             files: files,
         });
     }
 
-    const files = await getDirFiles(dir);
+    const files = await getDirFiles(breadcrumbs[breadcrumbs.length - 1].url);
+
+    const breadcrumbsSafe = breadcrumbs.map((e) => ({
+        id: e.id,
+        name: path.basename(e.url),
+    }));
 
     return res.status(200).json({
-        // directory: dir.replace('\\', '/'),
-        breadcrumbs,
+        breadcrumbs: breadcrumbsSafe,
         files: files,
     });
 };

@@ -14,6 +14,8 @@ router.get('/folders', logRequest, controller.folders);
 
 router.get('/file/:id', logRequest, controller.file);
 
+router.get('/tree/:id?', logRequest, controller.tree);
+
 router.get('/file/:id/download', logRequest, controller.download);
 
 export { router };

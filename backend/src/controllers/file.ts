@@ -1,5 +1,4 @@
-import * as fs from 'graceful-fs';
-const fsPromises = fs.promises;
+import { promises as fs, createReadStream } from 'graceful-fs';
 
 import { Request, Response } from 'express';
 
@@ -23,7 +22,7 @@ export const file = async (req: Request, res: Response) => {
 
     if (isAudioFile(filePath) || isVideoFile(filePath)) {
         try {
-            const stat = await fsPromises.lstat(filePath);
+            const stat = await fs.lstat(filePath);
 
             const fileSize = stat.size;
 
@@ -38,7 +37,7 @@ export const file = async (req: Request, res: Response) => {
 
                 const contentLength = end - start + 1;
 
-                const stream = fs.createReadStream(filePath, { start, end });
+                const stream = createReadStream(filePath, { start, end });
 
                 const head = {
                     'Content-Range': `bytes ${start}-${end}/${fileSize}`,
@@ -58,18 +57,19 @@ export const file = async (req: Request, res: Response) => {
 
                 res.writeHead(200, head);
 
-                const stream = fs.createReadStream(filePath);
+                const stream = createReadStream(filePath);
 
                 return stream.pipe(res);
             }
         } catch (err: any) {
             console.log(err);
-            if (err !== null && err.code === 'ENOENT') {
+            if (err?.code === 'ENOENT') {
                 return res.sendStatus(404);
             }
+            return res.sendStatus(500);
         }
     }
 
-    const stream = fs.createReadStream(filePath);
+    const stream = createReadStream(filePath);
     return stream.pipe(res);
 };
