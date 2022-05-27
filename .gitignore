@@ -45,3 +45,4 @@ jspm_packages/
 
 # Database file
 *.sqlite
+*.db

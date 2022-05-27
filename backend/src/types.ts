@@ -3,19 +3,21 @@ export type Dimensions = {
     height: number;
 };
 
-export type File = {
+type BaseFsElement = {
     name: string;
     id: string;
+    directory: boolean;
+};
+
+export type FsFile = BaseFsElement & {
     directory: false;
     size: number;
     hasThumb?: boolean;
-    metadata?: any;
+    // metadata?: any;
     contentType: 'audio' | 'video' | 'image' | undefined;
 };
 
-export type Folder = {
-    name: string;
-    id: string;
+export type FsFolder = BaseFsElement & {
     directory: true;
     fileCount: {
         file: number;
@@ -24,7 +26,7 @@ export type Folder = {
     };
 };
 
-export type FileOrFolder = File | Folder;
+export type FileOrFolder = FsFile | FsFolder;
 
 export type VideoMetadata = {
     audioCodec: string | undefined;
@@ -36,6 +38,7 @@ export type DbEntry = {
     id: string;
     parent?: string;
     url: string;
+    updated?: number;
 };
 
 export type TreeFolder = {
@@ -47,7 +50,7 @@ export type TreeFolder = {
 
 export type BreadCrumb = {
     id: string;
-    parent: string | null;
-    url: string;
+    parentId: string | null;
+    path: string;
     relative_depth: number;
 };

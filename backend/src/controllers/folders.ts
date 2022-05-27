@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 
-import { getIdByUrl, mapFolders } from '../functions';
+// import { getIdByUrl, mapFolders } from '../functions';
 
 export const folders = async (req: Request, res: Response) => {
     // const files = await Promise.all(

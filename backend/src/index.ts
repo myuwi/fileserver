@@ -14,9 +14,9 @@ app.disable('etag');
 app.use(cors());
 app.use(express.json());
 
-import { createSchema, dropSchema } from './database/schema';
+// import { createSchema, dropSchema } from './database/schema';
 // dropSchema();
-createSchema();
+// createSchema();
 
 import { router as apiRoute } from './routes/api';
 

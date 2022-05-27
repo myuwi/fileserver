@@ -5,10 +5,9 @@ import { Spinner } from './Spinner';
 import { ListItem } from './ListItem';
 
 import { useMobile } from '../context/MobileProvider';
-import { FileOrFolder, ViewerMedia } from '../types';
+import { File, FileOrFolder, ViewerMedia } from '../types';
 import { useSettings } from '../hooks/useSettings';
 import { ListItemDetails } from './ListItemDetails';
-import { File } from '@backend-types';
 
 type Props = {
     files: FileOrFolder[];

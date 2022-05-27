@@ -4,8 +4,7 @@ import { VideoPlayer } from './VideoPlayer';
 import { useMouseMoving } from '../hooks/useMouseMoving';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { AudioPlayer } from './AudioPlayer';
-import { ViewerMedia } from '../types';
-import { File } from '@backend-types';
+import { File, ViewerMedia } from '../types';
 
 type Props = {
     viewerMedia: File;

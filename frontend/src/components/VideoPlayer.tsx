@@ -25,7 +25,7 @@ import { IconButton } from './IconButton';
 import { LOGGER } from '../LOGGER';
 import { copyToClipboard } from '../Utils';
 import { useHover } from '../hooks/useHover';
-import { File } from '@backend-types';
+import { File } from '../types';
 import { useMouseMoving } from '../hooks/useMouseMoving';
 
 type Props = {

@@ -3,9 +3,10 @@ import * as path from 'path';
 
 import * as ffmpeg from 'fluent-ffmpeg';
 
-import { BreadCrumb, DbEntry, File, FileOrFolder, Folder, TreeFolder, VideoMetadata } from './types';
+import { BreadCrumb, FsFile, FileOrFolder, FsFolder, TreeFolder, VideoMetadata } from './types';
+import type { File } from '.prisma/client';
 
-import { db, knex } from './database/db';
+import { db } from './database/db';
 import { __rootdir__ } from './root';
 import { generateAudioThumbnail, generateImageThumbnail, generateVideoThumbnail, getFileThumbnail } from './thumbs';
 import { orderBy } from 'natural-orderby';
@@ -102,34 +103,24 @@ export const getIdByUrl = async (url: string) => {
 
     const id = await db.generateUniqueId(8);
 
-    await db.insert({ id, url: fixedUrl });
+    await db.insert({
+        id,
+        parentId: null,
+        path: fixedUrl,
+        updated: 0,
+    });
 
     return id;
 };
 
 export const getUrlById = async (id: string) => {
-    return (await db.getById(id))?.url;
+    return (await db.getById(id))?.path;
 };
 
 export const getBreadcrumbs = async (id?: string): Promise<BreadCrumb[]> => {
     if (!id) return [];
 
-    // FIXME: Yes, I know there's an SQL injection vulnerability here
-    const files = await knex.raw(
-        `WITH parents (id, parent, url, relative_depth) AS (
-            SELECT id, parent, url, 0
-            FROM files
-            WHERE id = ?
-            UNION ALL
-            SELECT f.id, f.parent, f.url, c.relative_depth - 1
-            FROM files f, parents c
-            WHERE f.id = c.parent
-        )
-        SELECT *
-        FROM parents
-        ORDER by relative_depth ASC;`,
-        id
-    );
+    const files = await db.getBreadcrumbs(id);
 
     return files;
 };
@@ -138,63 +129,64 @@ export const getRootDirectoryContents = async () => {
     return await Promise.all(config.rootDirs.map(async (dir) => await getFileInfo(dir)));
 };
 
-export const mapFolders = async (_path: string): Promise<any[] | null> => {
-    if (!_path) return null;
+// export const mapFolders = async (_path: string): Promise<any[] | null> => {
+//     if (!_path) return null;
 
-    const directory = await fs.readdir(_path);
+//     const directory = await fs.readdir(_path);
 
-    // const files = await Promise.all(
-    //     directory
-    //         .filter(async (e) => {
-    //             const dirPath = path.join(_path, e);
-    //             const stat = await fsPromises.lstat(dirPath);
+//     // const files = await Promise.all(
+//     //     directory
+//     //         .filter(async (e) => {
+//     //             const dirPath = path.join(_path, e);
+//     //             const stat = await fsPromises.lstat(dirPath);
 
-    //             return stat.isDirectory();
-    //         })
-    //         .map(async (e) => {
-    //             const dirPath = path.join(_path, e);
+//     //             return stat.isDirectory();
+//     //         })
+//     //         .map(async (e) => {
+//     //             const dirPath = path.join(_path, e);
 
-    //             const obj = {
-    //                 name: e,
-    //                 id: await getIdByUrl(dirPath),
-    //                 // type: isDirectory ? 'folder' : 'file',
-    //                 folders: await mapFolders(dirPath),
-    //             };
+//     //             const obj = {
+//     //                 name: e,
+//     //                 id: await getIdByUrl(dirPath),
+//     //                 // type: isDirectory ? 'folder' : 'file',
+//     //                 folders: await mapFolders(dirPath),
+//     //             };
 
-    //             // if (!isDirectory) obj.size = stat.size
+//     //             // if (!isDirectory) obj.size = stat.size
 
-    //             return obj;
-    //         })
-    // );
+//     //             return obj;
+//     //         })
+//     // );
 
-    const files = [];
+//     const files = [];
 
-    for (let i = 0; i < directory.length; i++) {
-        const e = directory[i];
+//     for (let i = 0; i < directory.length; i++) {
+//         const e = directory[i];
 
-        const dirPath = path.join(_path, e);
-        const stat = await fs.lstat(dirPath);
-        if (!stat.isDirectory()) continue;
+//         const dirPath = path.join(_path, e);
+//         const stat = await fs.lstat(dirPath);
+//         if (!stat.isDirectory()) continue;
 
-        files.push({
-            name: e,
-            id: await getIdByUrl(dirPath),
-            folders: await mapFolders(dirPath),
-        });
-    }
+//         files.push({
+//             name: e,
+//             id: await getIdByUrl(dirPath),
+//             folders: await mapFolders(dirPath),
+//         });
+//     }
 
-    return files.filter(Boolean);
-};
+//     return files.filter(Boolean);
+// };
 
 export const getFileParents = async (id?: string) => {
     const files = await getBreadcrumbs(id);
 
     type FolderData = {
         parentId: string;
-        folders: Folder[];
+        folders: FsFolder[];
     };
 
     const generateTree = (elements: FolderData[]) => {
+        // console.log(elements);
         if (!elements.length) return [];
         const element = elements[0];
 
@@ -219,7 +211,7 @@ export const getFileParents = async (id?: string) => {
 
     for (let i = 0; i < files.length; i++) {
         const dir = files[i];
-        const elements = (await getDirFiles(dir.url)).filter((e) => e.directory) as Folder[];
+        const elements = (await getDirFiles(dir.id)).filter((e) => e.directory) as FsFolder[];
 
         // console.log(dir.id, elements);
 
@@ -231,10 +223,10 @@ export const getFileParents = async (id?: string) => {
 
     const tree = generateTree(folderData);
 
-    // console.log(files);
+    console.log('files', files);
 
     // Append folders to root directory
-    const root = ((await getRootDirectoryContents()).filter((e) => e.directory) as Folder[]).map((e) => {
+    const root = ((await getRootDirectoryContents()).filter((e) => e.directory) as FsFolder[]).map((e) => {
         const item: TreeFolder = {
             name: e.name,
             id: e.id,
@@ -259,47 +251,46 @@ export const mapDirectory = async (dirPath: string, filesInDir: any[], flatten?:
     return files;
 };
 
-export const getDirFiles = async (dirPath: string, forceUpdate: boolean = false) => {
-    // forceUpdate = true; // for now
+export const getDirFiles = async (id: string, forceUpdate: boolean = false) => {
+    const dbEntries = await updateDir(id);
 
-    // if (!forceUpdate) {
-    //     try {
-    //         // const dbEntries = await knex<DbEntry>('files AS parent')
-    //         //     .select('parent.*')
-    //         //     .where('parent.url', dir)
-    //         //     .first()
-    //         //     .join('files', 'parent.id', '=', 'files.parent');
+    const CONCURRENT_ITEMS = 10;
 
-    //         const dbEntries: DbEntry[] = await knex<DbEntry>('files')
-    //             .select('*')
-    //             .where('parent', curDirDbE.id);
+    let files: FileOrFolder[] = [];
 
-    //         if (dbEntries.length) {
-    //             console.log(dbEntries);
-    //             const files = await Promise.all(dbEntries.map(async (e) => await fileInfo(e.url)));
-    //             return files;
-    //         }
+    let low = 0;
+    while (low < dbEntries.length) {
+        const high = Math.min(low + CONCURRENT_ITEMS, dbEntries.length);
+        const newFiles = await Promise.all(dbEntries.slice(low, high).map(async (e) => await getFileInfo(e.path)));
 
-    //     } catch (err) {
-    //         console.log(err);
-    //     }
-    // }
+        files = [...files, ...newFiles];
+        low += CONCURRENT_ITEMS;
+    }
 
-    return await updateDir(dirPath);
+    return files;
 };
 
 /**
  * Updates a directory's content and returns it
- * @param dirPath Path to directory
+ * @param id Id of the directory
  * @returns List of items in the directory
  */
-const updateDir = async (dirPath: string) => {
-    const curDirDbE = await knex<DbEntry>('files').select('*').where('url', dirPath).first();
+const updateDir = async (id: string) => {
+    // TODO: Do this all in as few transactions as possible
+    const now = Date.now();
+    const TIME_DELTA = 10000; // 10 seconds
+
+    const curDirDbE = await db.getById(id);
 
     // TODO: Recursively map folders to db
     if (!curDirDbE) return [];
 
-    const filePaths = (await fs.readdir(dirPath)).map((f) => path.join(dirPath, f).replace(/\\/g, '/'));
+    if (curDirDbE.updated && curDirDbE.updated > now - TIME_DELTA) {
+        console.log('Fetched from database');
+        return await db.getChildren(curDirDbE.id);
+    }
+
+    const filePaths = (await fs.readdir(curDirDbE.path)).map((f) => path.join(curDirDbE.path, f).replace(/\\/g, '/'));
 
     // console.log('filePaths', filePaths);
 
@@ -307,44 +298,33 @@ const updateDir = async (dirPath: string) => {
 
     // console.log('oldEntries', oldEntries);
 
-    const deletedFiles = (await db.getChildren(curDirDbE.id)).filter((dbE) => !filePaths.some((e) => e === dbE.url));
+    const deletedFiles = (await db.getChildren(curDirDbE.id)).filter((dbE) => !filePaths.some((e) => e === dbE.path));
 
     // console.log('deletedFiles', deletedFiles);
 
-    // TODO: Implement this better
-    // db.deleteManyById(deletedFiles.map((e) => e.id));
+    if (deletedFiles.length) {
+        db.deleteManyById(deletedFiles.map((e) => e.id));
+    }
 
-    const filesNotInDb = filePaths.filter((fp) => !oldEntries.some((e) => e.url === fp));
+    const filesNotInDb = filePaths.filter((fp) => !oldEntries.some((e) => e.path === fp));
 
     const newEntries = (await db.generateIds(filesNotInDb, 8)).map((e) => {
-        e.parent = curDirDbE.id;
+        e.parentId = curDirDbE.id;
+        console.log(e);
         return e;
     });
 
-    // console.log('newEntries', newEntries);
+    console.log('newEntries', newEntries);
 
     if (newEntries.length) {
         await db.insertMany(newEntries);
     }
 
-    const items = orderBy([...oldEntries, ...newEntries], [(v: DbEntry) => v.url]);
+    db.setUpdateTimestamp(curDirDbE.id, now);
 
-    const CONCURRENT_ITEMS = 10;
+    const items = orderBy([...oldEntries, ...newEntries], [(v: File) => v.path]);
 
-    let files: FileOrFolder[] = [];
-
-    let low = 0;
-    while (low < items.length) {
-        const high = Math.min(low + CONCURRENT_ITEMS, items.length);
-        const newFiles = await Promise.all(items.slice(low, high).map(async (e) => await getFileInfo(e.url)));
-
-        files = [...files, ...newFiles];
-        low += CONCURRENT_ITEMS;
-    }
-
-    // const files = await Promise.all(items.map(async (e) => await fileInfo(e.url)));
-
-    return files;
+    return items;
 };
 
 /**
@@ -366,10 +346,11 @@ export const getFileInfo = async (filePath: string) => {
 
     const isDirectory = stat.isDirectory();
 
+    console.log(filePath);
     const id = await getIdByUrl(filePath);
 
     if (!isDirectory) {
-        const item: File = {
+        const item: FsFile = {
             name: fileName,
             id,
             directory: false,
@@ -425,7 +406,7 @@ export const getFileInfo = async (filePath: string) => {
             childData.total++;
         }
 
-        const item: Folder = {
+        const item: FsFolder = {
             name: fileName,
             id,
             directory: true,

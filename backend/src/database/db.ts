@@ -1,75 +1,139 @@
-import Knex from 'knex';
-import { DbEntry } from '../types';
 import { generateId } from '../util';
+import { BreadCrumb } from '../types';
 
-export const knex = Knex({
-    client: 'sqlite3',
-    useNullAsDefault: true,
-    connection: {
-        filename: './db.sqlite',
-    },
-});
+import { PrismaClient } from '@prisma/client';
+import type { File } from '.prisma/client';
+const prisma = new PrismaClient();
+
+// import { knex } from './knexfile';
+// export { knex };
 
 // TODO: Implement a database cleanup on start
 
 export const db = {
-    getMultipleByUrl: async (pathArr: string[]): Promise<DbEntry[]> => {
-        return await knex<DbEntry>('files').select('*').whereIn('url', pathArr);
+    getMultipleByUrl: async (pathArr: string[]): Promise<File[]> => {
+        // return await knex<DbEntry>('files').select('*').whereIn('url', pathArr);
+        return await prisma.file.findMany({
+            where: {
+                path: {
+                    in: pathArr,
+                },
+            },
+        });
     },
-    getMultipleById: async (idArr: string[]): Promise<DbEntry[]> => {
-        return await knex<DbEntry>('files').select('*').whereIn('id', idArr);
+    getMultipleById: async (idArr: string[]): Promise<File[]> => {
+        return await prisma.file.findMany({
+            where: {
+                id: {
+                    in: idArr,
+                },
+            },
+        });
+        // return await knex<DbEntry>('files').select('*').whereIn('id', idArr);
     },
-    getChildren: async (id: string): Promise<DbEntry[]> => {
-        return await knex<DbEntry>('files').select('*').where('parent', id);
+    getChildren: async (id: string): Promise<File[]> => {
+        return await prisma.file.findMany({
+            where: {
+                parentId: id,
+            },
+        });
+        // return await knex<DbEntry>('files').select('*').where('parent', id);
     },
     getById: async (id: string) => {
-        return await knex<DbEntry>('files').where('id', id).first();
+        return await prisma.file.findUnique({
+            where: {
+                id,
+            },
+        });
+        // return await knex<DbEntry>('files').where('id', id).first();
     },
     getByUrl: async (url: string) => {
-        return await knex<DbEntry>('files').where('url', url).first();
+        return await prisma.file.findUnique({
+            where: {
+                path: url,
+            },
+        });
+        // return await knex<DbEntry>('files').where('url', url).first();
     },
-    insert: async (entry: DbEntry) => {
+    getBreadcrumbs: async (id: string) => {
+        // FIXME: Yes, I know there's an SQL injection vulnerability here
+        const breadcrumbs = await prisma.$queryRaw<BreadCrumb[]>`WITH parents (id, parentId, path, relative_depth) AS (
+                SELECT id, parentId, path, 0
+                FROM File
+                WHERE id = ${id}
+                UNION ALL
+                SELECT f.id, f.parentId, f.path, c.relative_depth - 1
+                FROM File f, parents c
+                WHERE f.id = c.parentId
+            )
+            SELECT *
+            FROM parents
+            ORDER by relative_depth ASC`;
+
+        console.log(breadcrumbs);
+        return breadcrumbs;
+    },
+    insert: async (entry: File) => {
         try {
-            const { id } = entry;
-            const rows = await knex('files').select().where({ id });
-
-            if (rows.length) {
-                throw new Error('Insert failed - Duplicate ID found');
-            }
-
-            return await knex('files').insert(entry);
+            return await prisma.file.create({
+                data: entry,
+            });
+            // return await knex('files').insert(entry);
         } catch (err) {
             console.log(err);
         }
     },
-    insertMany: async (data: DbEntry[]) => {
+    // FIXME: Dumb thing doesn't work well with Prisma
+    insertMany: async (entries: File[]) => {
+        const entryCount = entries.length;
         try {
-            let items = data;
-            let i = 0;
-
-            while (items.length) {
-                const slice = items.slice(0, 100);
-
-                await knex('files').insert(slice);
-
-                i += slice.length;
-                items = items.slice(slice.length);
-
-                console.log(` * Inserted ${slice.length} items into the database`);
+            for (let i = 0; i < entries.length; i++) {
+                const element = entries[i];
+                await prisma.file.create({
+                    data: element,
+                });
             }
+            console.log(` * Inserted ${entryCount} items into the database`);
         } catch (err) {
             console.log(err);
         }
+    },
+    setUpdateTimestamp: async (id: string, timestamp: number) => {
+        try {
+            await prisma.file.update({
+                where: { id },
+                data: { updated: timestamp },
+            });
+            // await knex<DbEntry>('files').where({ id }).update({ updated: timestamp });
+
+            return true;
+        } catch (err) {
+            console.log(err);
+        }
+        return false;
     },
     deleteManyById: async (idArr: string[]) => {
-        await knex<DbEntry>('files').whereIn('id', idArr).del();
+        await prisma.file.deleteMany({
+            where: {
+                id: {
+                    in: idArr,
+                },
+            },
+        });
+        // await knex<DbEntry>('files').whereIn('id', idArr).del();
+        console.log(` * Removed ${idArr.length} items and their children from the database`);
     },
     generateUniqueId: async (length: number): Promise<string> => {
         const id = generateId(length);
 
-        const rows = await knex('files').where({ id });
+        const rows = await prisma.file.count({
+            where: {
+                id,
+            },
+        });
+        // const rows = await knex('files').where({ id });
 
-        if (!rows.length) {
+        if (rows == 0) {
             return id;
         }
 
@@ -97,9 +161,11 @@ export const db = {
         } while (alreadyExists.length);
 
         const newItems = items.map(
-            (u, i): DbEntry => ({
+            (u, i): File => ({
                 id: ids[i],
-                url: u,
+                path: u,
+                parentId: null,
+                updated: 0,
             })
         );
 

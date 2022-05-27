@@ -1,6 +1,6 @@
-import { File, FileOrFolder } from '@backend-types';
-
-export { FileOrFolder };
+import { FsFile, TreeFolder, FileOrFolder } from '@backend-types';
+type File = FsFile;
+export { File, TreeFolder, FileOrFolder };
 
 export type ViewerMedia = {
     data: File;

@@ -7,7 +7,7 @@ import { AppBar } from './AppBar';
 import { copyToClipboard } from '../Utils';
 
 type Props = {
-    breadcrumbs: any;
+    breadcrumbs: any[] | undefined;
     toggleSettings: () => void;
     backDirectory: () => void;
     searchQuery: string;
@@ -89,7 +89,7 @@ export const FSAppBar = ({ breadcrumbs, toggleSettings, backDirectory, searchQue
     return (
         <AppBar>
             <AppBar.IconButton onClick={menuIconAction}>
-                <Icon icon={!!breadcrumbs.length || searchOpen ? mdiArrowLeft : mdiMenu} />
+                <Icon icon={!!breadcrumbs?.length || searchOpen ? mdiArrowLeft : mdiMenu} />
             </AppBar.IconButton>
 
             {searchOpen ? (
@@ -102,7 +102,7 @@ export const FSAppBar = ({ breadcrumbs, toggleSettings, backDirectory, searchQue
                     onChange={inputOnChange}
                 />
             ) : (
-                <AppBar.Title>{breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1].name : 'Files'}</AppBar.Title>
+                <AppBar.Title>{breadcrumbs && breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1].name : 'Files'}</AppBar.Title>
             )
             }
 

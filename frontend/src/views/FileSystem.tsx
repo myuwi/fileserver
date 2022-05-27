@@ -2,9 +2,7 @@ import * as React from 'react';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 
-import axios from 'axios';
-
-import { FileOrFolder, ViewerMedia } from '../types';
+import { File, FileOrFolder, ViewerMedia } from '../types';
 
 import { mdiClose, mdiChevronRight, mdiChevronLeft, mdiFolder, mdiArrowUp, mdiRefresh } from '@mdi/js';
 
@@ -29,7 +27,7 @@ import { collator } from '../Utils';
 
 import { BottomBar } from '../components/BottomBar';
 import { UiSize, useSettings, ViewMode } from '../hooks/useSettings';
-import { File } from '@backend-types';
+import { useFileFetching } from '../hooks/useFileFetching';
 
 // TODO: Split stuff to separate components
 // TODO: Context menu
@@ -41,9 +39,6 @@ export const FileSystem = () => {
     const isMobile = useMobile();
 
     // TODO: Convert to a custom hook
-    const [folders, setFolders] = useState(null);
-    const [directoryFiles, setDirectoryFiles] = useState<FileOrFolder[]>([]);
-    const [fetching, setFetching] = useState<boolean>(true);
     const [filteredDirectoryFiles, setFilteredDirectoryFiles] = useState<FileOrFolder[]>([]);
 
     const firstRender = useRef(true);
@@ -80,8 +75,6 @@ export const FileSystem = () => {
         });
     };
 
-    const [breadcrumbs, setBreadcrumbs] = useState<any[]>([]);
-
     // TODO: Selected File Info
     const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
 
@@ -90,11 +83,9 @@ export const FileSystem = () => {
 
     const navigate = useNavigate();
 
-    const params = useParams();
-    const directoryId = params.id;
+    const { fetching, error, directoryId, data } = useFileFetching();
+    const breadcrumbs: any[] | undefined = data?.breadcrumbs;
 
-    // FIXME ?
-    // const location = useLocation<LocationStateTypes>();
     const location = useLocation();
 
     useEffect(() => {
@@ -139,47 +130,11 @@ export const FileSystem = () => {
         navigate(`/${id}`);
     };
 
-    const fetchDirectory = async () => {
-        setFetching(true);
-        setDirectoryFiles([]);
-        let url = '/api/dir';
-
-        const paramsArr = [];
-
-        // console.log(directoryId)
-
-        if (directoryId) url += `/${directoryId}`;
-        if (flattenDepth > 0) paramsArr.push(`flatten=${flattenDepth}`);
-
-        if (paramsArr.length > 0) url += `?${paramsArr.join('&')}`;
-
-        // console.log(url)
-        try {
-            const dir = await axios.get(url).then((res) => res.data);
-
-            LOGGER.debug(dir);
-
-            const files = filterFiles(dir.files);
-
-            setBreadcrumbs(dir.breadcrumbs);
-            setDirectoryFiles(dir.files);
-            setFilteredDirectoryFiles(files);
-            setFetching(false);
-        } catch (err) {
-            // if (err.response.status === 404) return setDirectoryId(null)
-
-            // TODO: Make proper error messages
-            setDirectoryFiles([]);
-            setFetching(false);
-            console.log(err);
-        }
-    };
-
     const backDirectory = () => {
         // console.log('breadcrumbs', breadcrumbs)
         // console.log('Back Directory')
 
-        if (breadcrumbs.length <= 0) return;
+        if (!breadcrumbs || breadcrumbs.length <= 0) return;
 
         if (breadcrumbs.length <= 1) {
             return setDirectoryId(null);
@@ -243,12 +198,12 @@ export const FileSystem = () => {
     };
 
     useEffect(() => {
-        if (!directoryFiles) return setFilteredDirectoryFiles([]);
+        if (!data?.files) return setFilteredDirectoryFiles([]);
 
-        const files = filterFiles(directoryFiles);
+        const files = filterFiles(data.files);
 
         setFilteredDirectoryFiles(files);
-    }, [searchQuery]);
+    }, [data, searchQuery]);
 
     const handleIndexChange = (indexChange: number) => {
         let newIndex = focusedListItem + indexChange;
@@ -309,10 +264,10 @@ export const FileSystem = () => {
     }, [breadcrumbs, focusedListItem, filteredDirectoryFiles, viewerMedia]);
 
     useEffect(() => {
-        fetchDirectory();
+        // fetchDirectory();
         setSearchQuery('');
         setSelectedFiles([]);
-    }, [directoryId, flattenDepth]);
+    }, [directoryId]);
 
     const uiSizes = [
         {
@@ -366,7 +321,7 @@ export const FileSystem = () => {
                             size="32"
                             className="ml-2"
                             onClick={backDirectory}
-                            disabled={!breadcrumbs.length}
+                            disabled={!breadcrumbs?.length}
                         />
                     </div>
                     <div className="flex flex-row flex-nowrap flex-auto mx-2 px-1 bg-secondary-100 rounded-sm">
@@ -380,7 +335,7 @@ export const FileSystem = () => {
                             <IconButton icon={mdiChevronRight} size="18" />
                         </div>
 
-                        {breadcrumbs.map((breadcrumb, i) => {
+                        {breadcrumbs?.map((breadcrumb, i) => {
                             return (
                                 <div
                                     className="flex items-center"
@@ -416,7 +371,7 @@ export const FileSystem = () => {
                     isMobile ? 'pt-14' : 'pt-12'
                 }${bottomPadding} overflow-hidden relative flex flex-auto inset-0`}
             >
-                {!isMobile && <Sidenav breadcrumbs={breadcrumbs} folders={folders} setDirectoryId={setDirectoryId} />}
+                {!isMobile && <Sidenav breadcrumbs={breadcrumbs} setDirectoryId={setDirectoryId} />}
 
                 <ItemList
                     files={filteredDirectoryFiles}

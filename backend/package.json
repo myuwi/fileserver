@@ -9,10 +9,12 @@
         "watch": "tsc -w",
         "dev": "ts-node src/index.ts",
         "dev:r": "ts-node-dev src/index.ts",
-        "eslint": "eslint . --ext .js,.ts,.tsx",
-        "eslint-fix": "eslint . --fix --ext .js,.ts,.tsx"
+        "lint": "eslint . --ext .js,.ts,.tsx",
+        "eslint-fix": "eslint . --fix --ext .js,.ts,.tsx",
+        "database:reset": "npx prisma db push --force-reset"
     },
     "dependencies": {
+        "@prisma/client": "^3.12.0",
         "axios": "^0.19.2",
         "chalk": "^4.1.0",
         "cheerio": "^1.0.0-rc.3",
@@ -21,15 +23,13 @@
         "express": "^4.17.1",
         "fluent-ffmpeg": "^2.1.2",
         "graceful-fs": "^4.2.4",
-        "knex": "^0.95.1",
-        "mongodb": "^3.5.8",
         "music-metadata": "^7.8.8",
-        "mysql": "^2.18.1",
         "natural-orderby": "^2.0.3",
-        "sharp": "^0.26.0",
-        "sqlite3": "^5.0.2"
+        "prisma": "^3.12.0",
+        "sharp": "^0.26.0"
     },
     "devDependencies": {
+        "@types/better-sqlite3": "^7.5.0",
         "@types/cors": "^2.8.7",
         "@types/express": "^4.17.8",
         "@types/fluent-ffmpeg": "^2.1.15",
@@ -40,10 +40,9 @@
         "@typescript-eslint/eslint-plugin": "^4.2.0",
         "@typescript-eslint/parser": "^4.2.0",
         "eslint": "^7.2.0",
-        "nodemon": "^2.0.4",
         "prettier": "^2.5.1",
-        "ts-node": "^9.0.0",
-        "ts-node-dev": "^1.0.0-pre.63",
-        "typescript": "^4.0.3"
+        "ts-node": "^10.6.0",
+        "ts-node-dev": "^1.1.8",
+        "typescript": "^4.6.2"
     }
 }

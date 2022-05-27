@@ -1,0 +1,17 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model File {
+  id       String  @id
+  parentId String?
+  parent   File?   @relation(name: "ParentChildren", fields: [parentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  children File[]  @relation(name: "ParentChildren")
+  path     String  @unique
+  updated  Int
+}
